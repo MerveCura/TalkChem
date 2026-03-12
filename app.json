@@ -3,6 +3,7 @@
     "name": "TalkChem",
     "slug": "TalkChem",
     "version": "1.0.0",
+    "scheme": "talkchem",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +25,11 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
