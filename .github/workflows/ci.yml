@@ -32,4 +32,4 @@ jobs:
         env:
           DATABASE_URL: sqlite:///./test.db
           SECRET_KEY: test-secret-key
-        run: pytest tests/ -v --ignore=tests/__init__.py
+        run: pytest tests/ -v
