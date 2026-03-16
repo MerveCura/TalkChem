@@ -40,7 +40,7 @@ export default function RegisterScreen() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Register failed");
       await AsyncStorage.setItem("token", data.access_token);
-      router.replace("/(tabs)/home");
+      router.replace("/(auth)/level-test");
     } catch (e: any) {
       Alert.alert("Error", e.message);
     } finally {

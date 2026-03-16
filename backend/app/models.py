@@ -10,9 +10,32 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     level = Column(String, default=None)
+    english_level = Column(String, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
     quiz_attempts = relationship("UserQuizAttempt", back_populates="user")
     homeworks = relationship("Homework", back_populates="user")
+    level_test_attempts = relationship("LevelTestAttempt", back_populates="user")
+
+class LevelTestAttempt(Base):
+    __tablename__ = "level_test_attempts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    level = Column(String, nullable=False)
+    score = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="level_test_attempts")
+    answers = relationship("LevelTestAnswer", back_populates="attempt")
+
+class LevelTestAnswer(Base):
+    __tablename__ = "level_test_answers"
+    id = Column(Integer, primary_key=True, index=True)
+    attempt_id = Column(Integer, ForeignKey("level_test_attempts.id"), nullable=False)
+    question_text = Column(String, nullable=False)
+    question_type = Column(String, nullable=False)
+    user_answer = Column(String)
+    correct_answer = Column(String)
+    question_level = Column(String)
+    attempt = relationship("LevelTestAttempt", back_populates="answers")
 
 class Module(Base):
     __tablename__ = "modules"
