@@ -23,6 +23,13 @@ export default function LevelTestScreen() {
     fetchQuestions();
   }, []);
 
+  // Soru değişince openAnswer'ı güncelle
+  useEffect(() => {
+    if (questions[currentIndex]?.type === "open_ended") {
+      setOpenAnswer(answers[currentIndex] || "");
+    }
+  }, [currentIndex, questions]);
+
   const fetchQuestions = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -39,18 +46,46 @@ export default function LevelTestScreen() {
     }
   };
 
-  const handleAnswer = (answer: string) => {
+  const handleMultipleChoice = (answer: string) => {
     const newAnswers = [...answers];
     newAnswers[currentIndex] = answer;
     setAnswers(newAnswers);
-    setOpenAnswer("");
+  };
+
+  const handleOpenAnswer = () => {
+    const newAnswers = [...answers];
+    newAnswers[currentIndex] = openAnswer;
+    setAnswers(newAnswers);
+  };
+
+  const goNext = () => {
+    if (questions[currentIndex]?.type === "open_ended") {
+      const newAnswers = [...answers];
+      newAnswers[currentIndex] = openAnswer;
+      setAnswers(newAnswers);
+    }
     if (currentIndex < questions.length - 1) {
-      setTimeout(() => setCurrentIndex(currentIndex + 1), 300);
+      setCurrentIndex(currentIndex + 1);
     }
   };
 
+  const goBack = () => {
+    if (questions[currentIndex]?.type === "open_ended") {
+      const newAnswers = [...answers];
+      newAnswers[currentIndex] = openAnswer;
+      setAnswers(newAnswers);
+    }
+    setCurrentIndex(currentIndex - 1);
+  };
+
   const handleSubmit = async () => {
-    if (answers.some(a => !a)) {
+    // Son sorunun cevabını kaydet
+    const finalAnswers = [...answers];
+    if (questions[currentIndex]?.type === "open_ended") {
+      finalAnswers[currentIndex] = openAnswer;
+    }
+
+    if (finalAnswers.some(a => !a)) {
       return Alert.alert("Warning", "Please answer all questions");
     }
     setSubmitting(true);
@@ -62,7 +97,7 @@ export default function LevelTestScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ questions, answers }),
+        body: JSON.stringify({ questions, answers: finalAnswers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Submit failed");
@@ -92,6 +127,8 @@ export default function LevelTestScreen() {
 
   const current = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
+  const isLastQuestion = currentIndex === questions.length - 1;
+  const currentAnswered = answers[currentIndex] || (current?.type === "open_ended" && openAnswer);
 
   return (
     <LinearGradient colors={["#f953c6", "#b91d73", "#7c3aed", "#60a5fa"]} style={styles.container}>
@@ -108,8 +145,8 @@ export default function LevelTestScreen() {
         <View style={[styles.progressFill, { width: `${progress}%` }]} />
       </View>
 
-      {/* Soru kartı */}
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Soru kartı */}
         <View style={styles.card}>
           <View style={styles.levelBadge}>
             <Text style={styles.levelBadgeText}>{current.level}</Text>
@@ -117,7 +154,7 @@ export default function LevelTestScreen() {
           <Text style={styles.questionText}>{current.question}</Text>
 
           {/* Çoktan seçmeli */}
-          {current.type === "multiple_choice" && (
+          {current.type === "multiple_choice" && current.options && current.options.length > 0 && (
             <View style={styles.optionsContainer}>
               {current.options.map((option: string, i: number) => (
                 <TouchableOpacity
@@ -126,7 +163,7 @@ export default function LevelTestScreen() {
                     styles.optionBtn,
                     answers[currentIndex] === option && styles.optionBtnSelected
                   ]}
-                  onPress={() => handleAnswer(option)}
+                  onPress={() => handleMultipleChoice(option)}
                 >
                   <Text style={[
                     styles.optionText,
@@ -141,46 +178,44 @@ export default function LevelTestScreen() {
 
           {/* Açık uçlu */}
           {current.type === "open_ended" && (
-            <View style={styles.openEndedContainer}>
-              <TextInput
-                style={styles.openInput}
-                placeholder="Write your answer here..."
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                multiline
-                numberOfLines={4}
-                value={openAnswer}
-                onChangeText={setOpenAnswer}
-              />
-              <TouchableOpacity
-                style={styles.nextBtn}
-                onPress={() => handleAnswer(openAnswer)}
-              >
-                <Text style={styles.nextBtnText}>
-                  {currentIndex < questions.length - 1 ? "Next →" : "Finish"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TextInput
+              style={styles.openInput}
+              placeholder="Write your answer here..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              multiline
+              numberOfLines={4}
+              value={openAnswer}
+              onChangeText={setOpenAnswer}
+            />
           )}
         </View>
 
-        {/* Navigation */}
+        {/* Navigation butonları */}
         <View style={styles.navRow}>
           {currentIndex > 0 && (
-            <TouchableOpacity
-              style={styles.navBtn}
-              onPress={() => setCurrentIndex(currentIndex - 1)}
-            >
+            <TouchableOpacity style={styles.navBtn} onPress={goBack}>
               <Text style={styles.navBtnText}>← Back</Text>
             </TouchableOpacity>
           )}
-          {currentIndex === questions.length - 1 && answers[currentIndex] && (
+
+          {!isLastQuestion && (
             <TouchableOpacity
-              style={styles.submitBtn}
+              style={[styles.nextBtn, !currentAnswered && styles.btnDisabled]}
+              onPress={goNext}
+              disabled={!currentAnswered}
+            >
+              <Text style={styles.nextBtnText}>Next →</Text>
+            </TouchableOpacity>
+          )}
+
+          {isLastQuestion && (
+            <TouchableOpacity
+              style={[styles.submitBtn, (!currentAnswered || submitting) && styles.btnDisabled]}
               onPress={handleSubmit}
-              disabled={submitting}
+              disabled={!currentAnswered || submitting}
             >
               {submitting ? (
-                <ActivityIndicator color="white" />
+                <ActivityIndicator color="#7c3aed" />
               ) : (
                 <Text style={styles.submitBtnText}>Submit Test 🚀</Text>
               )}
@@ -256,7 +291,6 @@ const styles = StyleSheet.create({
   },
   optionText: { color: "rgba(255,255,255,0.8)", fontSize: 15 },
   optionTextSelected: { color: "white", fontWeight: "700" },
-  openEndedContainer: { gap: 12 },
   openInput: {
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
@@ -268,25 +302,25 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: "top",
   },
-  nextBtn: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-  },
-  nextBtnText: { color: "white", fontWeight: "700", fontSize: 15 },
   navRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     gap: 12,
   },
   navBtn: {
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
   },
   navBtnText: { color: "white", fontWeight: "600" },
+  nextBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  nextBtnText: { color: "white", fontWeight: "700", fontSize: 15 },
   submitBtn: {
     flex: 1,
     backgroundColor: "white",
@@ -295,4 +329,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitBtnText: { color: "#7c3aed", fontWeight: "800", fontSize: 16 },
+  btnDisabled: {
+    opacity: 0.5,
+  },
 });
