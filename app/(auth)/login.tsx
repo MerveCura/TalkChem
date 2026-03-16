@@ -36,7 +36,7 @@ export default function LoginScreen() {
     <LinearGradient colors={["#f953c6", "#7c3aed", "#60a5fa"]} style={styles.container}>
       <View style={styles.blobTop} />
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome{"\n"}Back! 👋</Text>
+        <Text style={styles.title}>Welcome{"\n"}Back! </Text>
         <Text style={styles.subtitle}>Login to continue your journey</Text>
       </View>
       <View style={styles.card}>

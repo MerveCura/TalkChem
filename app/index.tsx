@@ -1,12 +1,9 @@
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-
 const { width, height } = Dimensions.get("window");
-
 export default function WelcomeScreen() {
   const router = useRouter();
-
   return (
     <LinearGradient colors={["#f953c6", "#b91d73", "#7c3aed", "#60a5fa"]} style={styles.container}>
       <View style={styles.blobTop} />
@@ -27,7 +24,6 @@ export default function WelcomeScreen() {
     </LinearGradient>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   blobTop: {
