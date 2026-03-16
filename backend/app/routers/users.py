@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, LevelTestAttempt, LevelTestAnswer
 from app.routers.auth import get_current_user
-from datetime import datetime, timedelta
+from datetime import datetime
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 

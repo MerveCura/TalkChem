@@ -6,7 +6,6 @@ from app.routers.auth import get_current_user
 import openai
 import os
 import json
-import random
 
 router = APIRouter(prefix="/api/level-test", tags=["level-test"])
 
