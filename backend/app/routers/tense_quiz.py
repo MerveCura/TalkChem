@@ -24,7 +24,7 @@ async def get_questions(
         .filter(
             TenseQuizAttempt.user_id == current_user.id,
             TenseQuizAttempt.tense_id == tense_id,
-            TenseQuizAnswer.is_correct == False
+            TenseQuizAnswer.is_correct.is_(False)
         )
         .order_by(TenseQuizAnswer.created_at.desc())
         .limit(5)
