@@ -6,8 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_URL = "http://192.168.1.114:8000";
+import { API_URL } from "../config";
 
 export default function LoginScreen() {
   const router = useRouter();

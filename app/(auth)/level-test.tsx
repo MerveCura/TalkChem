@@ -6,9 +6,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "../config";
 
 const { width } = Dimensions.get("window");
-const API_URL = "http://192.168.1.114:8000";
+
 
 export default function LevelTestScreen() {
   const router = useRouter();

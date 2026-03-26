@@ -3,8 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { API_URL } from "../config";
 
-const API_URL = "http://192.168.1.114:8000";
 
 export default function ProfileScreen() {
   const router = useRouter();
