@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import auth, level_test, users
+from app.routers import auth, level_test, users, tense_quiz
 from app.database import init_db
 
 app = FastAPI(title="TalkChem API", version="0.1.0")
@@ -15,3 +15,4 @@ async def health():
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(level_test.router)
 app.include_router(users.router)
+app.include_router(tense_quiz.router)

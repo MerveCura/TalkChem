@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -15,6 +15,7 @@ class User(Base):
     quiz_attempts = relationship("UserQuizAttempt", back_populates="user")
     homeworks = relationship("Homework", back_populates="user")
     level_test_attempts = relationship("LevelTestAttempt", back_populates="user")
+    tense_quiz_attempts = relationship("TenseQuizAttempt", back_populates="user")
 
 class LevelTestAttempt(Base):
     __tablename__ = "level_test_attempts"
@@ -36,6 +37,33 @@ class LevelTestAnswer(Base):
     correct_answer = Column(String)
     question_level = Column(String)
     attempt = relationship("LevelTestAttempt", back_populates="answers")
+
+class TenseQuizAttempt(Base):
+    __tablename__ = "tense_quiz_attempts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    tense_id = Column(String, nullable=False)
+    score = Column(Float, default=0.0)
+    total_questions = Column(Integer, default=15)
+    completed = Column(Boolean, default=False)
+    perfect = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="tense_quiz_attempts")
+    answers = relationship("TenseQuizAnswer", back_populates="attempt")
+
+class TenseQuizAnswer(Base):
+    __tablename__ = "tense_quiz_answers"
+    id = Column(Integer, primary_key=True, index=True)
+    attempt_id = Column(Integer, ForeignKey("tense_quiz_attempts.id"), nullable=False)
+    question_text = Column(Text, nullable=False)
+    question_type = Column(String, nullable=False)
+    options = Column(Text)
+    user_answer = Column(String)
+    correct_answer = Column(String, nullable=False)
+    is_correct = Column(Boolean, default=False)
+    ai_feedback = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    attempt = relationship("TenseQuizAttempt", back_populates="answers")
 
 class Module(Base):
     __tablename__ = "modules"
