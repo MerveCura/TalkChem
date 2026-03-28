@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Float, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -16,6 +16,8 @@ class User(Base):
     homeworks = relationship("Homework", back_populates="user")
     level_test_attempts = relationship("LevelTestAttempt", back_populates="user")
     tense_quiz_attempts = relationship("TenseQuizAttempt", back_populates="user")
+    saved_words = relationship("SavedWord", back_populates="user")
+    seen_words = relationship("UserSeenWord", back_populates="user")
 
 class LevelTestAttempt(Base):
     __tablename__ = "level_test_attempts"
@@ -64,6 +66,40 @@ class TenseQuizAnswer(Base):
     ai_feedback = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     attempt = relationship("TenseQuizAttempt", back_populates="answers")
+
+class VocabularyWord(Base):
+    __tablename__ = "vocabulary_words"
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String, nullable=False, index=True)
+    level = Column(String, nullable=False, index=True)
+    word = Column(String, nullable=False)
+    meaning = Column(String, nullable=False)
+    meaning_tr = Column(String)
+    example_sentence = Column(String, nullable=False)
+    pronunciation = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    saved_by = relationship("SavedWord", back_populates="word")
+    seen_by = relationship("UserSeenWord", back_populates="word")
+
+class SavedWord(Base):
+    __tablename__ = "saved_words"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    word_id = Column(Integer, ForeignKey("vocabulary_words.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="saved_words")
+    word = relationship("VocabularyWord", back_populates="saved_by")
+    __table_args__ = (UniqueConstraint("user_id", "word_id", name="uq_saved_word"),)
+
+class UserSeenWord(Base):
+    __tablename__ = "user_seen_words"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    word_id = Column(Integer, ForeignKey("vocabulary_words.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="seen_words")
+    word = relationship("VocabularyWord", back_populates="seen_by")
+    __table_args__ = (UniqueConstraint("user_id", "word_id", name="uq_seen_word"),)
 
 class Module(Base):
     __tablename__ = "modules"
