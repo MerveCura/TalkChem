@@ -11,6 +11,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     level = Column(String, default=None)
     english_level = Column(String, default=None)
+    profile_image = Column(String, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
     quiz_attempts = relationship("UserQuizAttempt", back_populates="user")
     homeworks = relationship("Homework", back_populates="user")
