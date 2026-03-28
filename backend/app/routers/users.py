@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, LevelTestAttempt, LevelTestAnswer, TenseQuizAttempt, TenseQuizAnswer, SavedWord, VocabularyWord
+from app.models import User, LevelTestAttempt, LevelTestAnswer, TenseQuizAttempt, TenseQuizAnswer, SavedWord
 from app.routers.auth import get_current_user
 from datetime import datetime
 import os
