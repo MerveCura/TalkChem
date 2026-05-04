@@ -19,6 +19,8 @@ class User(Base):
     tense_quiz_attempts = relationship("TenseQuizAttempt", back_populates="user")
     saved_words = relationship("SavedWord", back_populates="user")
     seen_words = relationship("UserSeenWord", back_populates="user")
+    seen_tense_questions = relationship("TenseSeenQuestion", back_populates="user")
+    seen_grammar_questions = relationship("GrammarSeenQuestion", back_populates="user")
 
 class LevelTestAttempt(Base):
     __tablename__ = "level_test_attempts"
@@ -67,6 +69,34 @@ class TenseQuizAnswer(Base):
     ai_feedback = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     attempt = relationship("TenseQuizAttempt", back_populates="answers")
+
+class TenseQuestionPool(Base):
+    # Tense soruları ortak havuz — tüm kullanıcılar paylaşır
+    # used kolonu yok — kim gördü TenseSeenQuestion tablosunda takip edilir
+    __tablename__ = "tense_question_pool"
+    id = Column(Integer, primary_key=True, index=True)
+    tense_id = Column(String, nullable=False, index=True)
+    question_text = Column(Text, nullable=False)
+    question_type = Column(String, nullable=False)
+    options = Column(Text, nullable=True)
+    correct_answer = Column(String, nullable=False)
+    explanation = Column(Text, nullable=True)
+    difficulty = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    seen_by = relationship("TenseSeenQuestion", back_populates="question")
+
+class TenseSeenQuestion(Base):
+    # Kullanıcı bazlı görülen tense sorusu takibi
+    # Aynı soru farklı kullanıcılara gösterilebilir
+    # Aynı kullanıcıya aynı soru bir daha gösterilmez
+    __tablename__ = "tense_seen_questions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("tense_question_pool.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="seen_tense_questions")
+    question = relationship("TenseQuestionPool", back_populates="seen_by")
+    __table_args__ = (UniqueConstraint("user_id", "question_id", name="uq_tense_seen"),)
 
 class VocabularyWord(Base):
     __tablename__ = "vocabulary_words"
@@ -169,3 +199,54 @@ class Duel(Base):
     status = Column(String, default="pending")
     winner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class GrammarQuestionPool(Base):
+    # Grammar soruları ortak havuz — tüm kullanıcılar paylaşır
+    __tablename__ = "grammar_question_pool"
+    id = Column(Integer, primary_key=True, index=True)
+    topic_id = Column(String, nullable=False, index=True)
+    question_text = Column(Text, nullable=False)
+    question_type = Column(String, nullable=False)
+    options = Column(Text, nullable=True)
+    correct_answer = Column(String, nullable=False)
+    explanation = Column(Text, nullable=True)
+    difficulty = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    seen_by = relationship("GrammarSeenQuestion", back_populates="question")
+
+class GrammarSeenQuestion(Base):
+    # Kullanıcı bazlı görülen grammar sorusu takibi
+    __tablename__ = "grammar_seen_questions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    question_id = Column(Integer, ForeignKey("grammar_question_pool.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="seen_grammar_questions")
+    question = relationship("GrammarQuestionPool", back_populates="seen_by")
+    __table_args__ = (UniqueConstraint("user_id", "question_id", name="uq_grammar_seen"),)
+
+class GrammarQuizAttempt(Base):
+    __tablename__ = "grammar_quiz_attempts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    topic_id = Column(String, nullable=False)
+    score = Column(Float, default=0.0)
+    total_questions = Column(Integer, default=15)
+    completed = Column(Boolean, default=False)
+    perfect = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    answers = relationship("GrammarQuizAnswer", back_populates="attempt")
+
+class GrammarQuizAnswer(Base):
+    __tablename__ = "grammar_quiz_answers"
+    id = Column(Integer, primary_key=True, index=True)
+    attempt_id = Column(Integer, ForeignKey("grammar_quiz_attempts.id"), nullable=False)
+    question_text = Column(Text, nullable=False)
+    question_type = Column(String, nullable=False)
+    options = Column(Text)
+    user_answer = Column(String)
+    correct_answer = Column(String, nullable=False)
+    is_correct = Column(Boolean, default=False)
+    ai_feedback = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    attempt = relationship("GrammarQuizAttempt", back_populates="answers")

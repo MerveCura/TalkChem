@@ -50,14 +50,6 @@ export default function HomeScreen() {
     },
   ];
 
-  if (loading) {
-    return (
-      <LinearGradient colors={["#f953c6", "#7c3aed", "#60a5fa"]} style={styles.centered}>
-        <ActivityIndicator size="large" color="white" />
-      </LinearGradient>
-    );
-  }
-
   return (
     <LinearGradient colors={["#f953c6", "#7c3aed", "#60a5fa"]} style={styles.container}>
       <View style={styles.blobTop} />
@@ -67,10 +59,15 @@ export default function HomeScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Karşılama */}
+        {/* Karşılama — loading sırasında placeholder göster */}
         <View style={styles.welcomeArea}>
-          <Text style={styles.welcomeText}>Welcome back <Text style={styles.usernameText}>{user?.username}</Text> </Text>
-         
+          {loading ? (
+            <ActivityIndicator color="white" style={{ alignSelf: "flex-start", marginBottom: 8 }} />
+          ) : (
+            <Text style={styles.welcomeText}>
+              Welcome back <Text style={styles.usernameText}>{user?.username}</Text>
+            </Text>
+          )}
           {user?.english_level && (
             <View style={styles.levelPill}>
               <Text style={styles.levelPillText}>Level: {user.english_level}</Text>
@@ -131,7 +128,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   blobTop: {
     position: "absolute", top: -80, left: -60,
     width: 280, height: 280, borderRadius: 140,
@@ -226,10 +222,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     flex: 1,
-  },
-  moduleEmoji: {
-    fontSize: 32,
-    marginTop: 2,
   },
   moduleTitle: {
     fontSize: 20,

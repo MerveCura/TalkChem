@@ -3,9 +3,10 @@ import {
   ActivityIndicator, Alert, Image
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../config";
 
@@ -18,9 +19,14 @@ export default function ProfileScreen() {
   const [showQuizHistory, setShowQuizHistory] = useState(false);
   const [expandedQuiz, setExpandedQuiz] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  // useFocusEffect: profil ekranına her geçildiğinde çalışır
+  // useEffect'ten farkı: sekme değişince tekrar tetiklenir
+  // Böylece kelime kaydedince profil ekranına geçince saved words güncel gelir
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
   const fetchProfile = async () => {
     try {
@@ -196,7 +202,6 @@ export default function ProfileScreen() {
                 <Text style={styles.emptyText}>No quizzes yet. Start learning!</Text>
               ) : (
                 <>
-                  {/* Genel istatistik */}
                   <View style={styles.scoreRow}>
                     <View style={styles.scoreItem}>
                       <Text style={styles.scoreNumber}>{quizStats?.average_score || 0}%</Text>
@@ -212,7 +217,6 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  {/* Tense bazlı ilerleme */}
                   {Object.entries(quizStats?.tense_stats || {}).map(([tense, stats]: any) => (
                     <View key={tense} style={styles.tenseProgressItem}>
                       <View style={styles.tenseProgressHeader}>
@@ -228,7 +232,6 @@ export default function ProfileScreen() {
                     </View>
                   ))}
 
-                  {/* Quiz listesi */}
                   {quizStats?.history?.map((quiz: any) => (
                     <View key={quiz.id} style={styles.quizHistoryItem}>
                       <TouchableOpacity
@@ -440,9 +443,7 @@ const styles = StyleSheet.create({
     height: 8, backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 4, marginBottom: 4,
   },
-  progressBarFill: {
-    height: 8, backgroundColor: "white", borderRadius: 4,
-  },
+  progressBarFill: { height: 8, backgroundColor: "white", borderRadius: 4 },
   tenseAttempts: { color: "rgba(255,255,255,0.5)", fontSize: 11 },
   quizHistoryItem: {
     backgroundColor: "rgba(255,255,255,0.1)",

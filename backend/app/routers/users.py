@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import User, LevelTestAttempt, LevelTestAnswer, TenseQuizAttempt, TenseQuizAnswer, SavedWord
 from app.routers.auth import get_current_user
@@ -9,15 +9,17 @@ import shutil
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-@router.get("/me")
-def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Level test
+
+def get_level_test_data(user_id: int, db: Session) -> dict:
+    # En son seviye sınavını ve cevaplarını tek sorguda çeker
+    # joinedload: answers için ayrı sorgu yerine JOIN kullanılır
     last_attempt = (
         db.query(LevelTestAttempt)
-        .filter(LevelTestAttempt.user_id == current_user.id)
+        .filter(LevelTestAttempt.user_id == user_id)
         .order_by(LevelTestAttempt.created_at.desc())
         .first()
     )
+
     can_retake = True
     days_until_retake = 0
     if last_attempt:
@@ -51,13 +53,30 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
                 "is_correct": is_correct,
             })
 
-    # Tense quiz istatistikleri
+    return {
+        "attempt": {
+            "id": last_attempt.id,
+            "level": last_attempt.level,
+            "score": last_attempt.score,
+            "created_at": last_attempt.created_at,
+        } if last_attempt else None,
+        "can_retake": can_retake,
+        "days_until_retake": days_until_retake,
+        "answers": answers,
+    }
+
+
+def get_quiz_stats(user_id: int, db: Session) -> dict:
+    # Tüm quiz'leri ve yanlış cevapları tek sorguda çeker
+    # joinedload: her quiz için ayrı sorgu yerine tek JOIN kullanılır
+    # N+1 sorgu problemi bu şekilde çözülür
     tense_quizzes = (
         db.query(TenseQuizAttempt)
         .filter(
-            TenseQuizAttempt.user_id == current_user.id,
+            TenseQuizAttempt.user_id == user_id,
             TenseQuizAttempt.completed.is_(True)
         )
+        .options(joinedload(TenseQuizAttempt.answers))
         .order_by(TenseQuizAttempt.created_at.desc())
         .all()
     )
@@ -66,14 +85,7 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
     tense_progress = {}
 
     for quiz in tense_quizzes:
-        wrong_answers = (
-            db.query(TenseQuizAnswer)
-            .filter(
-                TenseQuizAnswer.attempt_id == quiz.id,
-                TenseQuizAnswer.is_correct.is_(False)
-            )
-            .all()
-        )
+        # answers zaten joinedload ile yüklendi — ekstra DB sorgusu gitmez
         wrong_list = [
             {
                 "question_text": a.question_text,
@@ -81,7 +93,8 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
                 "correct_answer": a.correct_answer,
                 "ai_feedback": a.ai_feedback,
             }
-            for a in wrong_answers
+            for a in quiz.answers
+            if not a.is_correct
         ]
 
         quiz_history.append({
@@ -107,10 +120,23 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
         for tense, scores in tense_progress.items()
     }
 
-    # Kayıtlı kelimeler
+    return {
+        "total_quizzes": len(tense_quizzes),
+        "perfect_quizzes": sum(1 for q in tense_quizzes if q.perfect),
+        "average_score": round(
+            sum(q.score for q in tense_quizzes) / len(tense_quizzes)
+        ) if tense_quizzes else 0,
+        "history": quiz_history,
+        "tense_stats": tense_stats,
+    }
+
+
+def get_saved_words_data(user_id: int, db: Session) -> dict:
+    # Kaydedilen kelimeleri word ilişkisiyle birlikte tek sorguda çeker
     saved_words = (
         db.query(SavedWord)
-        .filter(SavedWord.user_id == current_user.id)
+        .filter(SavedWord.user_id == user_id)
+        .options(joinedload(SavedWord.word))
         .order_by(SavedWord.created_at.desc())
         .all()
     )
@@ -130,34 +156,26 @@ def get_me(current_user: User = Depends(get_current_user), db: Session = Depends
     ]
 
     return {
+        "total": len(saved_words_list),
+        "words": saved_words_list,
+    }
+
+
+@router.get("/me")
+def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return {
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
         "english_level": current_user.english_level,
         "created_at": current_user.created_at,
         "profile_image": current_user.profile_image,
-        "level_test": {
-            "attempt": {
-                "id": last_attempt.id,
-                "level": last_attempt.level,
-                "score": last_attempt.score,
-                "created_at": last_attempt.created_at,
-            } if last_attempt else None,
-            "can_retake": can_retake,
-            "days_until_retake": days_until_retake,
-            "answers": answers,
-        },
-        "quiz_stats": {
-            "total_quizzes": len(tense_quizzes),
-            "perfect_quizzes": sum(1 for q in tense_quizzes if q.perfect),
-            "average_score": round(sum(q.score for q in tense_quizzes) / len(tense_quizzes)) if tense_quizzes else 0,
-            "history": quiz_history,
-            "tense_stats": tense_stats,
-        },
-        "saved_words": {
-            "total": len(saved_words_list),
-            "words": saved_words_list,
-        }
+        "level_test": get_level_test_data(current_user.id, db),
+        "quiz_stats": get_quiz_stats(current_user.id, db),
+        "saved_words": get_saved_words_data(current_user.id, db),
     }
 
 

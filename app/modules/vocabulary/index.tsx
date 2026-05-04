@@ -1,6 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+
+const { width } = Dimensions.get("window");
+// İki sütun arasında 12px boşluk, her iki tarafta 24px padding
+// Kart genişliği: (ekran - 48 padding - 12 gap) / 2
+const CARD_SIZE = (width - 48 - 12) / 2;
 
 const categories = [
   { id: "daily-life", name: "Daily Life", emoji: "🏠", color: ["#f953c6", "#b91d73"] as [string, string] },
@@ -44,7 +49,6 @@ export default function VocabularyScreen() {
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
-              style={styles.cardWrapper}
               onPress={() => router.push(`/modules/vocabulary/${cat.id}` as any)}
               activeOpacity={0.85}
             >
@@ -86,23 +90,22 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 12,
   },
-  cardWrapper: {
-    width: "47%",
-  },
   card: {
+    // Sabit genişlik ve yükseklik — tüm kartlar eşit boyutta
+    width: CARD_SIZE,
+    height: CARD_SIZE,
     borderRadius: 16,
-    padding: 16,
     alignItems: "center",
-    minHeight: 100,
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
   },
-  cardEmoji: { fontSize: 32 },
+  cardEmoji: { fontSize: 36 },
   cardName: {
     color: "white",
     fontWeight: "700",
     fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
+    paddingHorizontal: 8,
   },
 });
