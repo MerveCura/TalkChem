@@ -10,7 +10,7 @@ import { API_URL } from "../../../config";
 
 const BATCH_SIZE = 5;
 const TOTAL_BATCHES = 3;
-const TOTAL_QUESTIONS = BATCH_SIZE * TOTAL_BATCHES; // 15
+const TOTAL_QUESTIONS = BATCH_SIZE * TOTAL_BATCHES;
 
 const TOPIC_NAMES: Record<string, string> = {
   "articles": "Articles",
@@ -70,7 +70,6 @@ export default function GrammarQuizScreen() {
         router.replace("/(auth)/login");
         return;
       }
-
       const startRes = await fetch(`${API_URL}/api/grammar-quiz/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -87,9 +86,7 @@ export default function GrammarQuizScreen() {
   const fetchBatch = async (batchNo: number, isPrefetch = false) => {
     if (loadedBatches.current.has(batchNo)) return;
     if (prefetchingBatch.current === batchNo) return;
-
     prefetchingBatch.current = batchNo;
-
     try {
       const token = await AsyncStorage.getItem("token");
       const res = await fetch(
@@ -98,7 +95,6 @@ export default function GrammarQuizScreen() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to load questions");
-
       setQuestions(prev => [...prev, ...data.questions]);
       loadedBatches.current.add(batchNo);
     } catch (e) {
@@ -112,7 +108,6 @@ export default function GrammarQuizScreen() {
   const handleSubmitAnswer = async () => {
     if (!selectedAnswer) return Alert.alert("", "Please select an answer!");
     const current = questions[currentIndex];
-
     setChecking(true);
     try {
       const token = await AsyncStorage.getItem("token");
@@ -143,13 +138,15 @@ export default function GrammarQuizScreen() {
     if (nextIndex >= TOTAL_QUESTIONS) {
       try {
         const token = await AsyncStorage.getItem("token");
+        const finalCorrect = result?.is_correct ? correctCount + 1 : correctCount;
         const res = await fetch(`${API_URL}/api/grammar-quiz/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             attempt_id: attemptId,
-            correct_count: result?.is_correct ? correctCount : correctCount,
+            correct_count: finalCorrect,
             total: TOTAL_QUESTIONS,
+            topic_id: topicId,
           }),
         });
         const data = await res.json();
@@ -165,7 +162,6 @@ export default function GrammarQuizScreen() {
     if (!loadedBatches.current.has(nextBatch)) {
       await fetchBatch(nextBatch);
     }
-
     setCurrentIndex(nextIndex);
     setResult(null);
     setSelectedAnswer("");
@@ -223,7 +219,6 @@ export default function GrammarQuizScreen() {
   return (
     <LinearGradient colors={["#f953c6", "#b91d73", "#7c3aed"]} style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.backText}>✕</Text>
@@ -232,7 +227,6 @@ export default function GrammarQuizScreen() {
           <Text style={styles.counter}>{currentIndex + 1}/{TOTAL_QUESTIONS}</Text>
         </View>
 
-        {/* İlerleme çubuğu */}
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
@@ -285,7 +279,10 @@ export default function GrammarQuizScreen() {
               onPress={handleSubmitAnswer}
               disabled={checking || !selectedAnswer}
             >
-              {checking ? <ActivityIndicator color="#7c3aed" /> : <Text style={styles.submitBtnText}>Check Answer ✓</Text>}
+              {checking
+                ? <ActivityIndicator color="#7c3aed" />
+                : <Text style={styles.submitBtnText}>Check Answer ✓</Text>
+              }
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
@@ -301,67 +298,215 @@ export default function GrammarQuizScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
-  loadingText: { color: "white", fontSize: 16, marginTop: 16, textAlign: "center" },
+  container: {
+    flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  loadingText: {
+    color: "white",
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: "center",
+  },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 24, paddingTop: 60, paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 12,
   },
-  backText: { color: "white", fontSize: 20, fontWeight: "700" },
-  headerTitle: { color: "white", fontSize: 15, fontWeight: "800", flex: 1, textAlign: "center", marginHorizontal: 8 },
-  counter: { color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: "600" },
+  backText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  headerTitle: {
+    color: "white",
+    fontSize: 15,
+    fontWeight: "800",
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 8,
+  },
+  counter: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   progressBar: {
-    height: 6, backgroundColor: "rgba(255,255,255,0.2)",
-    marginHorizontal: 24, borderRadius: 3, marginBottom: 20,
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginHorizontal: 24,
+    borderRadius: 3,
+    marginBottom: 20,
   },
-  progressFill: { height: 6, backgroundColor: "white", borderRadius: 3 },
-  content: { paddingHorizontal: 24, paddingBottom: 40 },
+  progressFill: {
+    height: 6,
+    backgroundColor: "white",
+    borderRadius: 3,
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
   questionCard: {
-    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 24,
-    padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)", marginBottom: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    marginBottom: 16,
   },
   typeBadge: {
-    alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 12,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 12,
   },
-  typeBadgeText: { color: "white", fontSize: 11, fontWeight: "700" },
-  questionText: { color: "white", fontSize: 18, fontWeight: "700", lineHeight: 26, marginBottom: 20 },
-  optionsContainer: { gap: 10 },
+  typeBadgeText: {
+    color: "white",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  questionText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 26,
+    marginBottom: 20,
+  },
+  optionsContainer: {
+    gap: 10,
+  },
   optionBtn: {
-    backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  optionSelected: { backgroundColor: "rgba(255,255,255,0.3)", borderColor: "white" },
-  optionText: { color: "rgba(255,255,255,0.8)", fontSize: 15 },
-  optionTextSelected: { color: "white", fontWeight: "700" },
-  feedbackCard: { borderRadius: 16, padding: 16, marginTop: 8 },
-  feedbackCorrect: { backgroundColor: "rgba(52,211,153,0.2)", borderWidth: 1, borderColor: "rgba(52,211,153,0.4)" },
-  feedbackWrong: { backgroundColor: "rgba(248,113,113,0.2)", borderWidth: 1, borderColor: "rgba(248,113,113,0.4)" },
-  feedbackIcon: { fontSize: 24, marginBottom: 6 },
-  feedbackTitle: { color: "white", fontWeight: "800", fontSize: 18, marginBottom: 8 },
-  correctAnswerText: { color: "rgba(255,255,255,0.9)", fontSize: 14, marginBottom: 8 },
-  aiFeedbackText: { color: "rgba(255,255,255,0.85)", fontSize: 13, lineHeight: 20 },
+  optionSelected: {
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderColor: "white",
+  },
+  optionText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 15,
+  },
+  optionTextSelected: {
+    color: "white",
+    fontWeight: "700",
+  },
+  feedbackCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 8,
+  },
+  feedbackCorrect: {
+    backgroundColor: "rgba(52,211,153,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(52,211,153,0.4)",
+  },
+  feedbackWrong: {
+    backgroundColor: "rgba(248,113,113,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.4)",
+  },
+  feedbackIcon: {
+    fontSize: 24,
+    marginBottom: 6,
+  },
+  feedbackTitle: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  correctAnswerText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  aiFeedbackText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
+    lineHeight: 20,
+  },
   submitBtn: {
-    backgroundColor: "white", borderRadius: 16,
-    paddingVertical: 16, alignItems: "center", marginBottom: 16,
+    backgroundColor: "white",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 16,
   },
-  submitBtnText: { color: "#7c3aed", fontWeight: "800", fontSize: 16 },
+  submitBtnText: {
+    color: "#7c3aed",
+    fontWeight: "800",
+    fontSize: 16,
+  },
   nextBtn: {
-    backgroundColor: "rgba(255,255,255,0.25)", borderRadius: 16,
-    paddingVertical: 16, alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.4)", marginBottom: 16,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+    marginBottom: 16,
   },
-  nextBtnText: { color: "white", fontWeight: "800", fontSize: 16 },
-  btnDisabled: { opacity: 0.5 },
-  finishEmoji: { fontSize: 80, marginBottom: 16 },
-  finishTitle: { fontSize: 32, fontWeight: "900", color: "white", marginBottom: 8 },
-  finishScore: { fontSize: 64, fontWeight: "900", color: "white", marginBottom: 4 },
-  finishDetail: { fontSize: 18, color: "rgba(255,255,255,0.8)", marginBottom: 16 },
-  perfectMsg: { fontSize: 16, color: "rgba(255,255,255,0.9)", textAlign: "center", marginBottom: 32, lineHeight: 24 },
+  nextBtnText: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  finishEmoji: {
+    fontSize: 80,
+    marginBottom: 16,
+  },
+  finishTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "white",
+    marginBottom: 8,
+  },
+  finishScore: {
+    fontSize: 64,
+    fontWeight: "900",
+    color: "white",
+    marginBottom: 4,
+  },
+  finishDetail: {
+    fontSize: 18,
+    color: "rgba(255,255,255,0.8)",
+    marginBottom: 16,
+  },
+  perfectMsg: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 24,
+  },
   finishBtn: {
-    backgroundColor: "white", borderRadius: 16,
-    paddingVertical: 16, paddingHorizontal: 40, alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    alignItems: "center",
   },
-  finishBtnText: { color: "#7c3aed", fontWeight: "800", fontSize: 16 },
+  finishBtnText: {
+    color: "#7c3aed",
+    fontWeight: "800",
+    fontSize: 16,
+  },
 });

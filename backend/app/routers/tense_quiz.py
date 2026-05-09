@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, TenseQuizAttempt, TenseQuizAnswer, TenseQuestionPool, TenseSeenQuestion
 from app.routers.auth import get_current_user
+from app.routers.homework import create_homework_for_user
 from app.pregenerate import build_tense_pool_prompt
 from app.static_questions import get_static_questions
 import openai
@@ -20,7 +21,7 @@ executor = ThreadPoolExecutor(max_workers=4)
 BATCH_SIZE = 5
 TOTAL_QUESTIONS = 15
 TOTAL_BATCHES = TOTAL_QUESTIONS // BATCH_SIZE  # 3 batch
-MIN_POOL_SIZE = 20  # Her tense için havuzda bulunması gereken minimum soru
+MIN_POOL_SIZE = 20
 
 question_cache: dict[tuple, list] = {}
 generating: set[tuple] = set()
@@ -55,23 +56,19 @@ def normalize_question_type(q: dict) -> dict:
 
 
 def get_unseen_questions(tense_id: str, user_id: int, count: int, db: Session) -> list:
-    # Kullanıcının daha önce görmediği soruları havuzdan çeker
     seen_ids = {
         sq.question_id for sq in db.query(TenseSeenQuestion).filter(
             TenseSeenQuestion.user_id == user_id
         ).all()
     }
-
     query = db.query(TenseQuestionPool).filter(
         TenseQuestionPool.tense_id == tense_id
     )
     if seen_ids:
         query = query.filter(~TenseQuestionPool.id.in_(seen_ids))
-
     available = query.all()
     if len(available) < count:
         return []
-
     return random.sample(available, min(count, len(available)))
 
 
@@ -106,8 +103,6 @@ def format_questions(questions: list) -> list:
 
 
 def generate_and_add_to_pool(tense_id: str, count: int, db: Session) -> list:
-    # OpenAI ile soru üretir ve pool'a ekler
-    # Üretilen soruları döner — hemen kullanılabilir
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -138,9 +133,6 @@ def generate_and_add_to_pool(tense_id: str, count: int, db: Session) -> list:
 
 
 def prepare_batches_for_user(tense_id: str, user_id: int):
-    # Kullanıcı batch 1'i çözerken arka planda çalışır — kullanıcıyı bekletmez
-    # Batch 2 ve 3 için sorular hazırlanır ve cache'e alınır
-    # Pool boşsa önce soru üretilir, sonra batch'lere ayrılır
     gen_key = (tense_id, "batches", user_id)
     if gen_key in generating:
         return
@@ -150,35 +142,27 @@ def prepare_batches_for_user(tense_id: str, user_id: int):
         from app.database import SessionLocal
         db = SessionLocal()
         try:
-            # Batch 2 için görülmemiş soru ara
             batch2_qs = get_unseen_questions(tense_id, user_id, BATCH_SIZE, db)
 
             if not batch2_qs:
-                # Pool boş — 10 soru birden üret (batch 2 + batch 3)
                 new_questions = generate_and_add_to_pool(tense_id, BATCH_SIZE * 2, db)
-                # Üretilenleri direkt kullan
                 batch2_qs = new_questions[:BATCH_SIZE]
                 batch3_qs = new_questions[BATCH_SIZE:]
             else:
-                # Pool'da soru var — batch 3 için de al
                 mark_as_seen(user_id, batch2_qs, db)
                 batch3_qs = get_unseen_questions(tense_id, user_id, BATCH_SIZE, db)
                 if not batch3_qs:
-                    # Batch 3 için yeterli soru yok — üret
                     new_questions = generate_and_add_to_pool(tense_id, BATCH_SIZE, db)
                     batch3_qs = new_questions
 
-            # Batch 2 cache'e al
             if batch2_qs:
                 mark_as_seen(user_id, batch2_qs, db)
                 question_cache[(user_id, tense_id, 2)] = format_questions(batch2_qs)
 
-            # Batch 3 cache'e al
             if batch3_qs:
                 mark_as_seen(user_id, batch3_qs, db)
                 question_cache[(user_id, tense_id, 3)] = format_questions(batch3_qs)
 
-            # Pool azaldıysa arka planda tamamla
             total = db.query(TenseQuestionPool).filter(
                 TenseQuestionPool.tense_id == tense_id
             ).count()
@@ -228,24 +212,18 @@ async def get_question_batch(
     cache_key = (user_id, tense_id, batch_no)
 
     if batch_no == 1:
-        # İlk batch: statik sorular — 0ms bekleme, anında gelir
-        # Aynı anda arka planda batch 2 ve 3 hazırlanır
         questions = get_static_questions(tense_id)
         executor.submit(prepare_batches_for_user, tense_id, user_id)
 
     elif cache_key in question_cache:
-        # Cache'de hazır — anında gelir, bekleme yok
         questions = question_cache.pop(cache_key)
 
     else:
-        # Nadir durum: kullanıcı çok hızlı geçti, cache henüz hazır değil
-        # Senkron olarak pool'dan çek
         pool_qs = get_unseen_questions(tense_id, user_id, BATCH_SIZE, db)
         if pool_qs:
             mark_as_seen(user_id, pool_qs, db)
             questions = format_questions(pool_qs)
         else:
-            # Pool boş — senkron üret
             new_qs = generate_and_add_to_pool(tense_id, BATCH_SIZE, db)
             mark_as_seen(user_id, new_qs, db)
             questions = format_questions(new_qs)
@@ -313,6 +291,7 @@ async def complete_quiz(
     attempt_id = payload.get("attempt_id")
     correct_count = payload.get("correct_count", 0)
     total = payload.get("total", TOTAL_QUESTIONS)
+    tense_id = payload.get("tense_id")
 
     attempt = db.query(TenseQuizAttempt).filter(
         TenseQuizAttempt.id == attempt_id,
@@ -324,6 +303,32 @@ async def complete_quiz(
         attempt.completed = True
         attempt.perfect = correct_count == total
         db.commit()
+
+    # Yanlış cevaplanan soruları topla
+    wrong_answers = db.query(TenseQuizAnswer).filter(
+        TenseQuizAnswer.attempt_id == attempt_id,
+        TenseQuizAnswer.is_correct == False,
+    ).all()
+
+    if wrong_answers and tense_id:
+        wrong_questions = [
+            {
+                "question": a.question_text,
+                "options": json.loads(a.options) if a.options else [],
+                "user_answer": a.user_answer,
+                "correct_answer": a.correct_answer,
+            }
+            for a in wrong_answers
+        ]
+        topic_name = tense_id.replace("-", " ").title()
+        create_homework_for_user(
+            user_id=current_user.id,
+            quiz_type="tense",
+            topic_id=tense_id,
+            topic_name=topic_name,
+            wrong_questions=wrong_questions,
+            db=db,
+        )
 
     keys_to_delete = [k for k in question_cache if k[0] == current_user.id]
     for k in keys_to_delete:

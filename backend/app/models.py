@@ -71,8 +71,6 @@ class TenseQuizAnswer(Base):
     attempt = relationship("TenseQuizAttempt", back_populates="answers")
 
 class TenseQuestionPool(Base):
-    # Tense soruları ortak havuz — tüm kullanıcılar paylaşır
-    # used kolonu yok — kim gördü TenseSeenQuestion tablosunda takip edilir
     __tablename__ = "tense_question_pool"
     id = Column(Integer, primary_key=True, index=True)
     tense_id = Column(String, nullable=False, index=True)
@@ -86,9 +84,6 @@ class TenseQuestionPool(Base):
     seen_by = relationship("TenseSeenQuestion", back_populates="question")
 
 class TenseSeenQuestion(Base):
-    # Kullanıcı bazlı görülen tense sorusu takibi
-    # Aynı soru farklı kullanıcılara gösterilebilir
-    # Aynı kullanıcıya aynı soru bir daha gösterilmez
     __tablename__ = "tense_seen_questions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -168,7 +163,6 @@ class UserQuizAttempt(Base):
     user = relationship("User", back_populates="quiz_attempts")
     quiz = relationship("Quiz", back_populates="attempts")
     answers = relationship("UserAnswer", back_populates="attempt")
-    homeworks = relationship("Homework", back_populates="based_on_attempt")
 
 class UserAnswer(Base):
     __tablename__ = "user_answers"
@@ -184,11 +178,15 @@ class Homework(Base):
     __tablename__ = "homeworks"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    based_on_attempt_id = Column(Integer, ForeignKey("user_quiz_attempts.id"), nullable=False)
-    status = Column(String, default="pending")
+    quiz_type = Column(String, nullable=False)       # "tense" | "grammar"
+    topic_id = Column(String, nullable=False)         # "phrasal-verbs", "present-perfect" vb.
+    topic_name = Column(String, nullable=False)        # Okunabilir isim
+    wrong_questions = Column(Text, nullable=False)    # JSON — yanlış sorular listesi
+    status = Column(String, default="pending")        # "pending" | "done"
+    score = Column(Float, nullable=True)              # Ödev tamamlanınca dolar
     created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
     user = relationship("User", back_populates="homeworks")
-    based_on_attempt = relationship("UserQuizAttempt", back_populates="homeworks")
 
 class Duel(Base):
     __tablename__ = "duels"
@@ -201,7 +199,6 @@ class Duel(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class GrammarQuestionPool(Base):
-    # Grammar soruları ortak havuz — tüm kullanıcılar paylaşır
     __tablename__ = "grammar_question_pool"
     id = Column(Integer, primary_key=True, index=True)
     topic_id = Column(String, nullable=False, index=True)
@@ -215,7 +212,6 @@ class GrammarQuestionPool(Base):
     seen_by = relationship("GrammarSeenQuestion", back_populates="question")
 
 class GrammarSeenQuestion(Base):
-    # Kullanıcı bazlı görülen grammar sorusu takibi
     __tablename__ = "grammar_seen_questions"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

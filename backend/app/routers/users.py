@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models import User, LevelTestAttempt, LevelTestAnswer, TenseQuizAttempt, SavedWord
+from app.models import User, LevelTestAttempt, LevelTestAnswer, TenseQuizAttempt, GrammarQuizAttempt, SavedWord
 from app.routers.auth import get_current_user
 from datetime import datetime
 import os
@@ -11,8 +11,6 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def get_level_test_data(user_id: int, db: Session) -> dict:
-    # En son seviye sınavını ve cevaplarını tek sorguda çeker
-    # joinedload: answers için ayrı sorgu yerine JOIN kullanılır
     last_attempt = (
         db.query(LevelTestAttempt)
         .filter(LevelTestAttempt.user_id == user_id)
@@ -67,9 +65,7 @@ def get_level_test_data(user_id: int, db: Session) -> dict:
 
 
 def get_quiz_stats(user_id: int, db: Session) -> dict:
-    # Tüm quiz'leri ve yanlış cevapları tek sorguda çeker
-    # joinedload: her quiz için ayrı sorgu yerine tek JOIN kullanılır
-    # N+1 sorgu problemi bu şekilde çözülür
+    # Tense quizleri
     tense_quizzes = (
         db.query(TenseQuizAttempt)
         .filter(
@@ -81,11 +77,23 @@ def get_quiz_stats(user_id: int, db: Session) -> dict:
         .all()
     )
 
-    quiz_history = []
-    tense_progress = {}
+    # Grammar quizleri
+    grammar_quizzes = (
+        db.query(GrammarQuizAttempt)
+        .filter(
+            GrammarQuizAttempt.user_id == user_id,
+            GrammarQuizAttempt.completed.is_(True)
+        )
+        .options(joinedload(GrammarQuizAttempt.answers))
+        .order_by(GrammarQuizAttempt.created_at.desc())
+        .all()
+    )
 
+    quiz_history = []
+    topic_progress = {}
+
+    # Tense quiz history
     for quiz in tense_quizzes:
-        # answers zaten joinedload ile yüklendi — ekstra DB sorgusu gitmez
         wrong_list = [
             {
                 "question_text": a.question_text,
@@ -96,43 +104,72 @@ def get_quiz_stats(user_id: int, db: Session) -> dict:
             for a in quiz.answers
             if not a.is_correct
         ]
-
         quiz_history.append({
             "id": quiz.id,
-            "tense_id": quiz.tense_id,
+            "topic_id": quiz.tense_id,
+            "quiz_type": "tense",
             "score": quiz.score,
             "perfect": quiz.perfect,
             "total_questions": quiz.total_questions,
             "created_at": quiz.created_at,
             "wrong_answers": wrong_list,
         })
+        key = f"tense:{quiz.tense_id}"
+        topic_progress.setdefault(key, {"name": quiz.tense_id.replace("-", " ").title(), "scores": []})
+        topic_progress[key]["scores"].append(quiz.score)
 
-        if quiz.tense_id not in tense_progress:
-            tense_progress[quiz.tense_id] = []
-        tense_progress[quiz.tense_id].append(quiz.score)
+    # Grammar quiz history
+    for quiz in grammar_quizzes:
+        wrong_list = [
+            {
+                "question_text": a.question_text,
+                "user_answer": a.user_answer,
+                "correct_answer": a.correct_answer,
+                "ai_feedback": a.ai_feedback,
+            }
+            for a in quiz.answers
+            if not a.is_correct
+        ]
+        quiz_history.append({
+            "id": quiz.id,
+            "topic_id": quiz.topic_id,
+            "quiz_type": "grammar",
+            "score": quiz.score,
+            "perfect": quiz.perfect,
+            "total_questions": quiz.total_questions,
+            "created_at": quiz.created_at,
+            "wrong_answers": wrong_list,
+        })
+        key = f"grammar:{quiz.topic_id}"
+        topic_progress.setdefault(key, {"name": quiz.topic_id.replace("-", " ").title(), "scores": []})
+        topic_progress[key]["scores"].append(quiz.score)
 
-    tense_stats = {
-        tense: {
-            "average_score": round(sum(scores) / len(scores)),
-            "attempt_count": len(scores),
-            "latest_score": scores[0],
+    # Tarihe göre sırala
+    quiz_history.sort(key=lambda x: x["created_at"], reverse=True)
+
+    topic_stats = {
+        key: {
+            "name": val["name"],
+            "average_score": round(sum(val["scores"]) / len(val["scores"])),
+            "attempt_count": len(val["scores"]),
+            "latest_score": val["scores"][0],
         }
-        for tense, scores in tense_progress.items()
+        for key, val in topic_progress.items()
     }
 
+    all_quizzes = tense_quizzes + grammar_quizzes
+    total = len(all_quizzes)
+
     return {
-        "total_quizzes": len(tense_quizzes),
-        "perfect_quizzes": sum(1 for q in tense_quizzes if q.perfect),
-        "average_score": round(
-            sum(q.score for q in tense_quizzes) / len(tense_quizzes)
-        ) if tense_quizzes else 0,
+        "total_quizzes": total,
+        "perfect_quizzes": sum(1 for q in all_quizzes if q.perfect),
+        "average_score": round(sum(q.score for q in all_quizzes) / total) if total > 0 else 0,
         "history": quiz_history,
-        "tense_stats": tense_stats,
+        "tense_stats": topic_stats,  # profil ekranı bu key'i kullanıyor, isim değişmedi
     }
 
 
 def get_saved_words_data(user_id: int, db: Session) -> dict:
-    # Kaydedilen kelimeleri word ilişkisiyle birlikte tek sorguda çeker
     saved_words = (
         db.query(SavedWord)
         .filter(SavedWord.user_id == user_id)

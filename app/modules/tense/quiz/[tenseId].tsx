@@ -10,7 +10,7 @@ import { API_URL } from "../../../config";
 
 const BATCH_SIZE = 5;
 const TOTAL_BATCHES = 3;
-const TOTAL_QUESTIONS = BATCH_SIZE * TOTAL_BATCHES; // 15
+const TOTAL_QUESTIONS = BATCH_SIZE * TOTAL_BATCHES;
 
 export default function TenseQuizScreen() {
   const router = useRouter();
@@ -59,7 +59,6 @@ export default function TenseQuizScreen() {
         router.replace("/(auth)/login");
         return;
       }
-
       const startRes = await fetch(`${API_URL}/api/tense-quiz/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -76,9 +75,7 @@ export default function TenseQuizScreen() {
   const fetchBatch = async (batchNo: number, isPrefetch = false) => {
     if (loadedBatches.current.has(batchNo)) return;
     if (prefetchingBatch.current === batchNo) return;
-
     prefetchingBatch.current = batchNo;
-
     try {
       const token = await AsyncStorage.getItem("token");
       const res = await fetch(
@@ -87,7 +84,6 @@ export default function TenseQuizScreen() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to load questions");
-
       setQuestions(prev => [...prev, ...data.questions]);
       loadedBatches.current.add(batchNo);
     } catch (e) {
@@ -101,7 +97,6 @@ export default function TenseQuizScreen() {
   const handleSubmitAnswer = async () => {
     if (!selectedAnswer) return Alert.alert("", "Please select an answer!");
     const current = questions[currentIndex];
-
     setChecking(true);
     try {
       const token = await AsyncStorage.getItem("token");
@@ -132,13 +127,15 @@ export default function TenseQuizScreen() {
     if (nextIndex >= TOTAL_QUESTIONS) {
       try {
         const token = await AsyncStorage.getItem("token");
+        const finalCorrect = result?.is_correct ? correctCount + 1 : correctCount;
         const res = await fetch(`${API_URL}/api/tense-quiz/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             attempt_id: attemptId,
-            correct_count: correctCount,
+            correct_count: finalCorrect,
             total: TOTAL_QUESTIONS,
+            tense_id: tenseId,
           }),
         });
         const data = await res.json();
@@ -154,7 +151,6 @@ export default function TenseQuizScreen() {
     if (!loadedBatches.current.has(nextBatch)) {
       await fetchBatch(nextBatch);
     }
-
     setCurrentIndex(nextIndex);
     setResult(null);
     setSelectedAnswer("");
@@ -274,11 +270,10 @@ export default function TenseQuizScreen() {
               onPress={handleSubmitAnswer}
               disabled={checking || !selectedAnswer}
             >
-              {checking ? (
-                <ActivityIndicator color="#7c3aed" />
-              ) : (
-                <Text style={styles.submitBtnText}>Check Answer ✓</Text>
-              )}
+              {checking
+                ? <ActivityIndicator color="#7c3aed" />
+                : <Text style={styles.submitBtnText}>Check Answer ✓</Text>
+              }
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>

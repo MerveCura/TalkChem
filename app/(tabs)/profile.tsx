@@ -19,9 +19,6 @@ export default function ProfileScreen() {
   const [showQuizHistory, setShowQuizHistory] = useState(false);
   const [expandedQuiz, setExpandedQuiz] = useState<number | null>(null);
 
-  // useFocusEffect: profil ekranına her geçildiğinde çalışır
-  // useEffect'ten farkı: sekme değişince tekrar tetiklenir
-  // Böylece kelime kaydedince profil ekranına geçince saved words güncel gelir
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
@@ -58,11 +55,7 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
       const formData = new FormData();
-      formData.append("file", {
-        uri,
-        type: "image/jpeg",
-        name: "profile.jpg",
-      } as any);
+      formData.append("file", { uri, type: "image/jpeg", name: "profile.jpg" } as any);
       try {
         const token = await AsyncStorage.getItem("token");
         await fetch(`${API_URL}/api/users/upload-photo`, {
@@ -105,6 +98,8 @@ export default function ProfileScreen() {
   const quizStats = user?.quiz_stats;
   const savedWords = user?.saved_words;
 
+  const getQuizTypeEmoji = (quizType: string) => quizType === "tense" ? "⏱️" : "📖";
+
   return (
     <LinearGradient colors={["#f953c6", "#7c3aed", "#60a5fa"]} style={styles.container}>
       <View style={styles.blobTop} />
@@ -118,9 +113,7 @@ export default function ProfileScreen() {
               <Image source={{ uri: `${API_URL}/${user.profile_image}` }} style={styles.avatarImage} />
             ) : (
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.username?.[0]?.toUpperCase() || "?"}
-                </Text>
+                <Text style={styles.avatarText}>{user?.username?.[0]?.toUpperCase() || "?"}</Text>
               </View>
             )}
             <View style={styles.editBadge}>
@@ -151,7 +144,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Saved Words Kartı */}
+        {/* Saved Words */}
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.cardHeader}
@@ -160,7 +153,6 @@ export default function ProfileScreen() {
             <Text style={styles.cardTitle}>🔖 Saved Words ({savedWords?.total || 0})</Text>
             <Text style={styles.chevron}>{showSavedWords ? "▲" : "▼"}</Text>
           </TouchableOpacity>
-
           {showSavedWords && (
             <View style={styles.savedWordsContainer}>
               {savedWords?.words?.length === 0 ? (
@@ -173,10 +165,7 @@ export default function ProfileScreen() {
                       <Text style={styles.savedWordMeaning}>{word.meaning_tr || word.meaning}</Text>
                       <Text style={styles.savedWordCategory}>{word.category} • {word.level}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.removeBtn}
-                      onPress={() => removeSavedWord(word.id)}
-                    >
+                    <TouchableOpacity style={styles.removeBtn} onPress={() => removeSavedWord(word.id)}>
                       <Text style={styles.removeBtnText}>✕</Text>
                     </TouchableOpacity>
                   </View>
@@ -186,7 +175,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Quiz History Kartı */}
+        {/* Quiz History */}
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.cardHeader}
@@ -217,12 +206,11 @@ export default function ProfileScreen() {
                     </View>
                   </View>
 
-                  {Object.entries(quizStats?.tense_stats || {}).map(([tense, stats]: any) => (
-                    <View key={tense} style={styles.tenseProgressItem}>
+                  {/* Topic progress bars */}
+                  {Object.entries(quizStats?.tense_stats || {}).map(([key, stats]: any) => (
+                    <View key={key} style={styles.tenseProgressItem}>
                       <View style={styles.tenseProgressHeader}>
-                        <Text style={styles.tenseProgressName}>
-                          {tense.replace(/-/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                        </Text>
+                        <Text style={styles.tenseProgressName}>{stats.name}</Text>
                         <Text style={styles.tenseProgressScore}>{stats.average_score}%</Text>
                       </View>
                       <View style={styles.progressBarBg}>
@@ -232,19 +220,23 @@ export default function ProfileScreen() {
                     </View>
                   ))}
 
+                  {/* Quiz history listesi */}
                   {quizStats?.history?.map((quiz: any) => (
-                    <View key={quiz.id} style={styles.quizHistoryItem}>
+                    <View key={`${quiz.quiz_type}-${quiz.id}`} style={styles.quizHistoryItem}>
                       <TouchableOpacity
                         style={styles.quizHistoryHeader}
                         onPress={() => setExpandedQuiz(expandedQuiz === quiz.id ? null : quiz.id)}
                       >
-                        <View>
-                          <Text style={styles.quizHistoryTense}>
-                            {quiz.tense_id.replace(/-/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                          </Text>
-                          <Text style={styles.quizHistoryDate}>
-                            {new Date(quiz.created_at).toLocaleDateString("tr-TR")}
-                          </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                          <Text style={styles.quizTypeEmoji}>{getQuizTypeEmoji(quiz.quiz_type)}</Text>
+                          <View>
+                            <Text style={styles.quizHistoryTense}>
+                              {quiz.topic_id.replace(/-/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            </Text>
+                            <Text style={styles.quizHistoryDate}>
+                              {new Date(quiz.created_at).toLocaleDateString("tr-TR")}
+                            </Text>
+                          </View>
                         </View>
                         <View style={styles.quizHistoryRight}>
                           <Text style={[
@@ -272,7 +264,6 @@ export default function ProfileScreen() {
                           ))}
                         </View>
                       )}
-
                       {expandedQuiz === quiz.id && quiz.wrong_answers.length === 0 && (
                         <Text style={styles.perfectMsg}>🌟 Perfect score! All answers correct!</Text>
                       )}
@@ -284,7 +275,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Level Test Kartı */}
+        {/* Level Test */}
         {attempt && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -293,7 +284,6 @@ export default function ProfileScreen() {
                 <Text style={styles.levelPillText}>{attempt.level}</Text>
               </View>
             </View>
-
             <View style={styles.scoreRow}>
               <View style={styles.scoreItem}>
                 <Text style={styles.scoreNumber}>{attempt.score}%</Text>
@@ -310,16 +300,11 @@ export default function ProfileScreen() {
                 <Text style={styles.scoreLabel}>Correct</Text>
               </View>
             </View>
-
-            <TouchableOpacity
-              style={styles.toggleBtn}
-              onPress={() => setShowAnswers(!showAnswers)}
-            >
+            <TouchableOpacity style={styles.toggleBtn} onPress={() => setShowAnswers(!showAnswers)}>
               <Text style={styles.toggleBtnText}>
                 {showAnswers ? "Hide Answers ▲" : "View My Answers ▼"}
               </Text>
             </TouchableOpacity>
-
             {showAnswers && (
               <View style={styles.answersContainer}>
                 {answers.map((answer: any, i: number) => (
@@ -338,12 +323,8 @@ export default function ProfileScreen() {
                 ))}
               </View>
             )}
-
             {levelTest.can_retake ? (
-              <TouchableOpacity
-                style={styles.retakeBtn}
-                onPress={() => router.push("/(auth)/level-test")}
-              >
+              <TouchableOpacity style={styles.retakeBtn} onPress={() => router.push("/(auth)/level-test")}>
                 <Text style={styles.retakeBtnText}>🔄 Retake Level Test</Text>
               </TouchableOpacity>
             ) : (
@@ -361,126 +342,348 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: {
+    flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   blobTop: {
-    position: "absolute", top: -80, left: -60,
-    width: 280, height: 280, borderRadius: 140,
+    position: "absolute",
+    top: -80,
+    left: -60,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     backgroundColor: "rgba(236,72,153,0.5)",
   },
-  content: { paddingHorizontal: 24, paddingTop: 80, paddingBottom: 100 },
-  title: { fontSize: 40, fontWeight: "800", color: "white", marginBottom: 24 },
-  avatarContainer: { alignItems: "center", marginBottom: 32 },
+  content: {
+    paddingHorizontal: 24,
+    paddingTop: 80,
+    paddingBottom: 100,
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: "800",
+    color: "white",
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
   avatar: {
-    width: 90, height: 90, borderRadius: 45,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: "rgba(255,255,255,0.3)",
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarImage: { width: 90, height: 90, borderRadius: 45 },
-  avatarText: { fontSize: 36, fontWeight: "800", color: "white" },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: "white",
+  },
   editBadge: {
-    position: "absolute", bottom: 0, right: 0,
-    backgroundColor: "white", borderRadius: 12,
-    width: 28, height: 28, alignItems: "center", justifyContent: "center",
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "white",
+    borderRadius: 12,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  editBadgeText: { fontSize: 14 },
-  username: { fontSize: 18, color: "white", fontWeight: "600", marginTop: 10, marginBottom: 8 },
+  editBadgeText: {
+    fontSize: 14,
+  },
+  username: {
+    fontSize: 18,
+    color: "white",
+    fontWeight: "600",
+    marginTop: 10,
+    marginBottom: 8,
+  },
   levelBadge: {
-    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
-  levelText: { color: "white", fontWeight: "700" },
-  statsRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
-  statCard: {
-    flex: 1, padding: 16, borderRadius: 16, alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+  levelText: {
+    color: "white",
+    fontWeight: "700",
   },
-  statNumber: { fontSize: 28, fontWeight: "800", color: "white" },
-  statLabel: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  card: {
-    padding: 20, borderRadius: 20, marginBottom: 16,
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "white",
+  },
+  statLabel: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
+  card: {
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   cardHeader: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "white" },
-  chevron: { color: "white", fontSize: 14 },
-  savedWordsContainer: { gap: 10 },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
+  },
+  chevron: {
+    color: "white",
+    fontSize: 14,
+  },
+  savedWordsContainer: {
+    gap: 10,
+  },
   savedWordItem: {
-    flexDirection: "row", alignItems: "center",
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12, padding: 12, gap: 10,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
   },
-  savedWordInfo: { flex: 1 },
-  savedWordText: { color: "white", fontWeight: "800", fontSize: 16, marginBottom: 2 },
-  savedWordMeaning: { color: "rgba(255,255,255,0.8)", fontSize: 13, marginBottom: 2 },
-  savedWordCategory: { color: "rgba(255,255,255,0.5)", fontSize: 11 },
+  savedWordInfo: {
+    flex: 1,
+  },
+  savedWordText: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  savedWordMeaning: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  savedWordCategory: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+  },
   removeBtn: {
     backgroundColor: "rgba(248,113,113,0.3)",
-    borderRadius: 8, padding: 6,
+    borderRadius: 8,
+    padding: 6,
   },
-  removeBtnText: { color: "white", fontSize: 12, fontWeight: "700" },
-  emptyText: { color: "rgba(255,255,255,0.6)", fontSize: 14, textAlign: "center", paddingVertical: 12 },
-  scoreRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  removeBtnText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    textAlign: "center",
+    paddingVertical: 12,
+  },
+  scoreRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
   scoreItem: {
-    flex: 1, alignItems: "center",
+    flex: 1,
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12, padding: 12,
+    borderRadius: 12,
+    padding: 12,
   },
-  scoreNumber: { fontSize: 24, fontWeight: "800", color: "white" },
-  scoreLabel: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  tenseProgressItem: { marginBottom: 14 },
+  scoreNumber: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "white",
+  },
+  scoreLabel: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+  },
+  tenseProgressItem: {
+    marginBottom: 14,
+  },
   tenseProgressHeader: {
-    flexDirection: "row", justifyContent: "space-between", marginBottom: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
   },
-  tenseProgressName: { color: "white", fontWeight: "600", fontSize: 13 },
-  tenseProgressScore: { color: "white", fontWeight: "800", fontSize: 13 },
+  tenseProgressName: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  tenseProgressScore: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 13,
+  },
   progressBarBg: {
-    height: 8, backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 4, marginBottom: 4,
+    height: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 4,
+    marginBottom: 4,
   },
-  progressBarFill: { height: 8, backgroundColor: "white", borderRadius: 4 },
-  tenseAttempts: { color: "rgba(255,255,255,0.5)", fontSize: 11 },
+  progressBarFill: {
+    height: 8,
+    backgroundColor: "white",
+    borderRadius: 4,
+  },
+  tenseAttempts: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+  },
   quizHistoryItem: {
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12, padding: 12, marginBottom: 8,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
   },
   quizHistoryHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  quizHistoryTense: { color: "white", fontWeight: "700", fontSize: 14 },
-  quizHistoryDate: { color: "rgba(255,255,255,0.5)", fontSize: 11, marginTop: 2 },
-  quizHistoryRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  quizHistoryScore: { fontSize: 18, fontWeight: "800" },
-  perfectBadge: { fontSize: 16 },
-  wrongAnswersList: { marginTop: 10, gap: 8 },
-  wrongAnswersTitle: { color: "rgba(255,255,255,0.8)", fontWeight: "700", fontSize: 13, marginBottom: 4 },
+  quizTypeEmoji: {
+    fontSize: 18,
+  },
+  quizHistoryTense: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  quizHistoryDate: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  quizHistoryRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  quizHistoryScore: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  perfectBadge: {
+    fontSize: 16,
+  },
+  wrongAnswersList: {
+    marginTop: 10,
+    gap: 8,
+  },
+  wrongAnswersTitle: {
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "700",
+    fontSize: 13,
+    marginBottom: 4,
+  },
   wrongAnswerItem: {
     backgroundColor: "rgba(248,113,113,0.15)",
-    borderRadius: 10, padding: 10,
-    borderWidth: 1, borderColor: "rgba(248,113,113,0.3)",
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.3)",
   },
-  wrongQuestion: { color: "white", fontWeight: "600", fontSize: 12, marginBottom: 4 },
-  wrongYours: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 2 },
-  wrongCorrect: { color: "#34d399", fontSize: 12, fontWeight: "600", marginBottom: 2 },
-  wrongFeedback: { color: "rgba(255,255,255,0.6)", fontSize: 11, fontStyle: "italic" },
-  perfectMsg: { color: "#34d399", fontWeight: "600", fontSize: 13, textAlign: "center", paddingVertical: 8 },
+  wrongQuestion: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  wrongYours: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  wrongCorrect: {
+    color: "#34d399",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  wrongFeedback: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 11,
+    fontStyle: "italic",
+  },
+  perfectMsg: {
+    color: "#34d399",
+    fontWeight: "600",
+    fontSize: 13,
+    textAlign: "center",
+    paddingVertical: 8,
+  },
   levelPill: {
     backgroundColor: "rgba(255,255,255,0.25)",
-    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
-  levelPillText: { color: "white", fontWeight: "800", fontSize: 16 },
+  levelPillText: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 16,
+  },
   toggleBtn: {
     backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 10, padding: 12, alignItems: "center", marginBottom: 12,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+    marginBottom: 12,
   },
-  toggleBtnText: { color: "white", fontWeight: "600", fontSize: 14 },
-  answersContainer: { gap: 10, marginBottom: 12 },
-  answerItem: { borderRadius: 12, padding: 12, borderWidth: 1 },
+  toggleBtnText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  answersContainer: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  answerItem: {
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+  },
   answerCorrect: {
     backgroundColor: "rgba(52,211,153,0.15)",
     borderColor: "rgba(52,211,153,0.4)",
@@ -489,17 +692,43 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(248,113,113,0.15)",
     borderColor: "rgba(248,113,113,0.4)",
   },
-  answerQuestion: { color: "white", fontWeight: "600", fontSize: 13, marginBottom: 4 },
-  answerYours: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginBottom: 2 },
-  answerCorrectText: { color: "#34d399", fontSize: 12, fontWeight: "600" },
-  retakeBtn: {
-    backgroundColor: "white", borderRadius: 12,
-    padding: 14, alignItems: "center", marginTop: 4,
+  answerQuestion: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 13,
+    marginBottom: 4,
   },
-  retakeBtnText: { color: "#7c3aed", fontWeight: "800", fontSize: 14 },
+  answerYours: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  answerCorrectText: {
+    color: "#34d399",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  retakeBtn: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  retakeBtnText: {
+    color: "#7c3aed",
+    fontWeight: "800",
+    fontSize: 14,
+  },
   retakeDisabled: {
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12, padding: 14, alignItems: "center", marginTop: 4,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    marginTop: 4,
   },
-  retakeDisabledText: { color: "rgba(255,255,255,0.6)", fontSize: 13 },
+  retakeDisabledText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 13,
+  },
 });

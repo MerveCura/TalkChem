@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.routers import auth, level_test, users, tense_quiz, vocabulary, grammar_quiz
+from app.routers import auth, level_test, users, tense_quiz, vocabulary, grammar_quiz, homework
 from app.database import init_db
 import os
 
@@ -23,3 +23,4 @@ app.include_router(users.router)
 app.include_router(tense_quiz.router)
 app.include_router(vocabulary.router)
 app.include_router(grammar_quiz.router)
+app.include_router(homework.router)
