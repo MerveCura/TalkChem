@@ -333,7 +333,7 @@ async def complete_quiz(
 
     wrong_answers = db.query(GrammarQuizAnswer).filter(
         GrammarQuizAnswer.attempt_id == attempt_id,
-        GrammarQuizAnswer.is_correct == False,
+        GrammarQuizAnswer.is_correct.is_(False),
     ).all()
 
     if wrong_answers and topic_id:

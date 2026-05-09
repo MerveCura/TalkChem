@@ -307,7 +307,7 @@ async def complete_quiz(
     # Yanlış cevaplanan soruları topla
     wrong_answers = db.query(TenseQuizAnswer).filter(
         TenseQuizAnswer.attempt_id == attempt_id,
-        TenseQuizAnswer.is_correct == False,
+        TenseQuizAnswer.is_correct.is_(False),
     ).all()
 
     if wrong_answers and tense_id:
