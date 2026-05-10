@@ -1,9 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "expo-router";
 import { API_URL } from "../config";
 
 export default function HomeScreen() {
@@ -17,7 +16,6 @@ export default function HomeScreen() {
     fetchUser();
   }, []);
 
-  // Ekrana her dönüşte ödevleri yenile
   useFocusEffect(
     useCallback(() => {
       fetchHomeworks();
@@ -46,7 +44,8 @@ export default function HomeScreen() {
       const res = await fetch(`${API_URL}/api/homework/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
+      const text = await res.text();
+      const data = JSON.parse(text);
       setHomeworks(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
@@ -109,7 +108,7 @@ export default function HomeScreen() {
         {/* Ödevler Section */}
         <View style={styles.homeworkSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Homeworks</Text>
+            <Text style={styles.sectionTitle}>📚 Homeworks</Text>
             {pendingHomeworks.length > 0 && (
               <View style={styles.pendingBadge}>
                 <Text style={styles.pendingBadgeText}>{pendingHomeworks.length} pending</Text>
@@ -131,7 +130,6 @@ export default function HomeScreen() {
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={false}
             >
-              {/* Pending ödevler */}
               {pendingHomeworks.map(hw => (
                 <TouchableOpacity
                   key={hw.id}
@@ -152,7 +150,6 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               ))}
 
-              {/* Tamamlanan ödevler */}
               {doneHomeworks.length > 0 && (
                 <>
                   <Text style={styles.doneLabel}>Completed</Text>

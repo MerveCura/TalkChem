@@ -25,6 +25,7 @@ class User(Base):
     received_friend_requests = relationship("Friendship", foreign_keys="Friendship.addressee_id", back_populates="addressee")
     challenged_duels = relationship("Duel", foreign_keys="Duel.challenger_id", back_populates="challenger")
     received_duels = relationship("Duel", foreign_keys="Duel.opponent_id", back_populates="opponent")
+    speaking_sessions = relationship("SpeakingSession", back_populates="user")
 
 class LevelTestAttempt(Base):
     __tablename__ = "level_test_attempts"
@@ -199,7 +200,7 @@ class Friendship(Base):
     id = Column(Integer, primary_key=True, index=True)
     requester_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     addressee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(String, default="pending")   # "pending" | "accepted" | "rejected"
+    status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     requester = relationship("User", foreign_keys=[requester_id], back_populates="sent_friend_requests")
@@ -212,10 +213,9 @@ class Duel(Base):
     challenger_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     opponent_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(String, default="pending")
-    # pending → accepted → challenger_done → completed
-    topic = Column(String, nullable=False)           # hangi konu (tense/grammar topic_id)
+    topic = Column(String, nullable=False)
     topic_name = Column(String, nullable=False)
-    questions = Column(Text, nullable=True)          # JSON — her iki kullanıcı aynı soruları görür
+    questions = Column(Text, nullable=True)
     challenger_score = Column(Float, nullable=True)
     opponent_score = Column(Float, nullable=True)
     winner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -223,6 +223,24 @@ class Duel(Base):
     completed_at = Column(DateTime, nullable=True)
     challenger = relationship("User", foreign_keys=[challenger_id], back_populates="challenged_duels")
     opponent = relationship("User", foreign_keys=[opponent_id], back_populates="received_duels")
+
+# ── Speaking Models ───────────────────────────────────────────────────────────
+
+class SpeakingSession(Base):
+    __tablename__ = "speaking_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    scenario_id = Column(String, nullable=False)
+    scenario_name = Column(String, nullable=False)
+    messages = Column(Text, nullable=False)
+    overall_score = Column(Float, nullable=True)
+    grammar_score = Column(Float, nullable=True)
+    vocabulary_score = Column(Float, nullable=True)
+    fluency_score = Column(Float, nullable=True)
+    pronunciation_score = Column(Float, nullable=True)
+    analysis = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="speaking_sessions")
 
 class GrammarQuestionPool(Base):
     __tablename__ = "grammar_question_pool"

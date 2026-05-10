@@ -93,6 +93,12 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="speaking"
+        options={{
+          tabBarIcon: ({ color }) => <Ionicons name="mic-outline" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={22} color={color} />,
