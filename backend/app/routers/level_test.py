@@ -6,6 +6,7 @@ from app.routers.auth import get_current_user
 import openai
 import os
 import json
+import time
 
 router = APIRouter(prefix="/api/level-test", tags=["level-test"])
 
@@ -26,45 +27,113 @@ TOTAL_BATCHES = TOTAL_QUESTIONS // BATCH_SIZE  # 4 batch
 # ── Prompt Fonksiyonları ──────────────────────────────────────────────────────
 
 def build_batch_prompt(batch_no: int) -> str:
-    # Her batch farklı zorluk seviyesinde sorular üretir
-    # Batch 1 → A1-A2, Batch 2 → B1, Batch 3 → B2, Batch 4 → C1-C2
-    # temperature=0.8: yüksek çeşitlilik — her seferinde farklı sorular üretilir
-    level_map = {
-        1: "A1-A2 (beginner to elementary)",
-        2: "B1 (intermediate)",
-        3: "B2 (upper intermediate)",
-        4: "C1-C2 (advanced to mastery)",
-    }
-    level_desc = level_map.get(batch_no, "B1")
+    # Her batch farklı zorluk seviyesinde ve farklı konularda sorular üretir
+    # Cambridge/Oxford/EF SET tarzı gerçek seviye sınavı yapısı kullanılır
+    # Konular batch'ler arasında kesinlikle çakışmaz — her batch sadece kendi konularını kullanır
+    # seed: her seferinde farklı sorular üretilmesini sağlar
+    seed = int(time.time()) % 10000
+
+    # Batch 1: A1-A2 — Temel grammar ve vocabulary
+    # Sadece bu konular kullanılır: present simple, past simple, articles, basic vocabulary
+    if batch_no == 1:
+        level_desc = "A1-A2 (beginner to elementary)"
+        open_ended_instruction = "Include exactly 5 multiple_choice questions. No open_ended questions."
+        topics = """ONLY use these topics for Batch 1 — do NOT use any other topics:
+- Present Simple (he/she/it forms, habits, routines): "She ___ to school every day."
+- Past Simple (regular/irregular verbs): "Yesterday, I ___ a great movie."
+- Articles (a, an, the, zero article): "She is ___ engineer."
+- Basic prepositions of place/time (in, on, at): "The meeting is ___ Monday."
+- Basic vocabulary (common everyday words, numbers, colors, jobs)
+
+FORBIDDEN topics for Batch 1: present perfect, conditionals, passive voice, modal verbs, phrasal verbs, reported speech"""
+
+        examples = """Good examples for this level:
+- "She ___ her homework every evening." → ["do", "does", "doing", "did"]
+- "They ___ to Paris last summer." → ["go", "goes", "went", "gone"]
+- "I have ___ appointment at 3 pm." → ["a", "an", "the", "—"]
+- "The supermarket is ___ the left." → ["in", "on", "at", "by"]"""
+
+    # Batch 2: B1 — Orta seviye grammar
+    # Sadece bu konular kullanılır: present perfect, comparatives, modal verbs, common phrasal verbs
+    elif batch_no == 2:
+        level_desc = "B1 (intermediate)"
+        open_ended_instruction = "Include exactly 1 open_ended question and 4 multiple_choice questions."
+        topics = """ONLY use these topics for Batch 2 — do NOT use any other topics:
+- Present Perfect (have/has + past participle, ever/never/already/yet): "Have you ___ been to Paris?"
+- Comparatives and superlatives: "This is ___ book I have ever read."
+- Modal verbs (should, must, might, could): "You ___ see a doctor about that cough."
+- Common phrasal verbs (look after, give up, find out, carry on): "She decided to ___ smoking."
+- Prepositions of movement and time (during, while, until, since)
+
+FORBIDDEN topics for Batch 2: present simple, past simple, articles, passive voice, conditionals, reported speech"""
+
+        examples = """Good examples for this level:
+- "I ___ never tried sushi before." → ["have", "had", "has", "am"]
+- "This test is ___ than the last one." → ["more difficult", "most difficult", "difficulter", "much difficult"]
+- "You really ___ call your parents more often." → ["should", "must", "will", "can"]
+- "She decided to ___ her bad habits." → ["give up", "give in", "give out", "give off"]"""
+
+    # Batch 3: B2 — Üst orta seviye grammar
+    # Sadece bu konular kullanılır: passive voice, conditionals, reported speech, collocations
+    elif batch_no == 3:
+        level_desc = "B2 (upper intermediate)"
+        open_ended_instruction = "Include exactly 1 open_ended question and 4 multiple_choice questions."
+        topics = """ONLY use these topics for Batch 3 — do NOT use any other topics:
+- Passive Voice (all tenses): "The report ___ by the manager last week."
+- Conditional sentences (Type 1, 2, 3): "If I ___ you, I would apologize immediately."
+- Reported Speech (say, tell, ask): "She said she ___ finish the project by Friday."
+- Collocations and fixed expressions (make/do, strong collocations): "She ___ a big mistake during the presentation."
+- Advanced prepositions and linking words (despite, although, whereas, nevertheless)
+
+FORBIDDEN topics for Batch 3: present simple, past simple, present perfect, articles, comparatives, modal verbs, phrasal verbs"""
+
+        examples = """Good examples for this level:
+- "The new bridge ___ by 2025." → ["will be completed", "will complete", "completes", "is completing"]
+- "If she ___ harder, she would have passed the exam." → ["had studied", "studied", "has studied", "would study"]
+- "He told me he ___ finish the report by Friday." → ["would", "will", "can", "shall"]
+- "She ___ a great impression on the interviewers." → ["made", "did", "had", "took"]"""
+
+    # Batch 4: C1-C2 — İleri seviye grammar ve vocabulary
+    # Sadece bu konular kullanılır: subjunctive, complex conditionals, idioms, academic vocabulary
+    else:
+        level_desc = "C1-C2 (advanced to mastery)"
+        open_ended_instruction = "Include exactly 5 multiple_choice questions. No open_ended questions."
+        topics = """ONLY use these topics for Batch 4 — do NOT use any other topics:
+- Subjunctive mood and formal structures (It is essential that he BE present): "The committee recommended that the policy ___ revised."
+- Mixed and inverted conditionals: "Had she known about the meeting, she ___ attended."
+- Idiomatic expressions and advanced collocations: "The new policy is ___ hot water with the employees."
+- Academic and formal vocabulary (nuanced word choice, avoid basic words): "The scientist's findings ___ previous assumptions about climate change."
+- Cleft sentences and advanced emphasis structures: "___ the manager who made the final decision."
+
+FORBIDDEN topics for Batch 4: present simple, past simple, present perfect, articles, comparatives, modal verbs, basic phrasal verbs, basic vocabulary"""
+
+        examples = """Good examples for this level:
+- "The board insisted that the CEO ___ his resignation." → ["submit", "submits", "submitted", "would submit"]
+- "___ I known about the risks, I would never have invested." → ["Had", "Have", "Has", "Did"]
+- "The merger deal fell ___  at the last minute." → ["through", "apart", "down", "out"]
+- "The researcher's findings ___ long-held assumptions." → ["undermined", "underlined", "undertook", "underscored"]"""
+
     start_id = (batch_no - 1) * BATCH_SIZE + 1
 
-    # Batch 2 ve 3'te 1 açık uçlu soru olur, diğerlerinde sadece çoktan seçmeli
-    if batch_no == 2:
-        open_ended_instruction = "Include exactly 1 open_ended question and 4 multiple_choice questions."
-    elif batch_no == 3:
-        open_ended_instruction = "Include exactly 1 open_ended question and 4 multiple_choice questions."
-    else:
-        open_ended_instruction = "Include exactly 5 multiple_choice questions. No open_ended questions."
+    return f"""You are an expert English language test designer creating a CEFR proficiency test similar to Cambridge, Oxford Placement Test, or EF SET.
 
-    return f"""Generate exactly {BATCH_SIZE} English proficiency test questions at {level_desc} CEFR level.
+Generate exactly {BATCH_SIZE} English proficiency test questions at {level_desc} CEFR level.
 
 {open_ended_instruction}
 
+{topics}
+
+{examples}
+
 STRICT RULES:
-- Questions MUST test English grammar or vocabulary — NOT personal preferences or opinions
+- Questions MUST strictly follow the topic list above — no exceptions
 - Every multiple_choice MUST have exactly 4 options
 - Questions must be self-contained, no reading passage references
 - Start question ids from {start_id}
-- Cover these topics naturally: verb tenses, articles, prepositions, modal verbs, conditional sentences, phrasal verbs, vocabulary, idioms, reported speech, passive voice
-- Use real-world everyday English — similar to Cambridge, Oxford, or EF SET style tests
-- open_ended: ask student to write 2-3 sentences (e.g. "Describe a time when you had to make a difficult decision.")
-
-Good examples:
-- "She ___ her homework before dinner." → ["had finished", "has finished", "finished", "would finish"]
-- "If I ___ you, I would apologize." → ["were", "am", "was", "be"]
-- "He's very good ___ playing the piano." → ["at", "in", "on", "for"]
-- "The meeting has been ___." → ["postponed", "postponing", "postpone", "to postpone"]
-- "What ___ when I called you?" → ["did you do", "were you doing", "have you done", "do you do"]
+- Use natural, real-world English sentences — not artificial or textbook-sounding
+- open_ended: ask student to write 2-3 sentences on a real-life situation
+- Vary sentence structures — do not repeat the same pattern
+- SEED: {seed} — use this to ensure variety
 
 Return ONLY a JSON array, no other text:
 [
@@ -187,7 +256,7 @@ def generate_batch_sync(user_id: int, batch_no: int):
 async def get_question_batch(
     batch_no: int,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),  # JWT zorunlu
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if batch_no < 1 or batch_no > TOTAL_BATCHES:
@@ -238,7 +307,7 @@ async def get_question_batch(
 async def submit_answers(
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT zorunlu
+    current_user: User = Depends(get_current_user)
 ):
     answers = payload.get("answers", [])
     questions = payload.get("questions", [])
@@ -252,8 +321,6 @@ async def submit_answers(
     mc_score = round((mc_correct / max(len(mc_questions), 1)) * 85)
 
     # Açık uçlu sorular: 2 soru × max 5 puan = max 10 puan
-    # correct_answer DB'de None olarak saklanır çünkü bu tür soruların
-    # tek bir doğru cevabı yoktur — AI gramer, kelime ve netliğe göre puanlar
     open_questions = [
         (q, a) for q, a in zip(questions, answers)
         if q.get("type") == "open_ended"
@@ -293,7 +360,7 @@ async def submit_answers(
         score=total_score
     )
     db.add(attempt)
-    db.flush()  # id üretilsin ama commit atılmasın — cevaplar da aynı transaction'da kaydedilsin
+    db.flush()
 
     for question, answer in zip(questions, answers):
         is_open = question.get("type") == "open_ended"
@@ -302,8 +369,6 @@ async def submit_answers(
             question_text=question.get("question", ""),
             question_type=question.get("type", ""),
             user_answer=str(answer),
-            # Açık uçlu soruların tek bir doğru cevabı olmadığı için None kaydedilir
-            # Puanlama AI tarafından gramer ve netlik kriterlerine göre yapılır
             correct_answer=question.get("correct_answer") if not is_open else None,
             question_level=question.get("level", "")
         )
