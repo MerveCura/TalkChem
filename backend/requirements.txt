@@ -10,5 +10,5 @@ pytest==8.4.0
 pytest-asyncio==1.4.0
 ruff==0.4.4
 openai>=1.0.0
-starlette==0.47.2
+starlette==0.46.2
 pyasn1==0.6.3
