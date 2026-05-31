@@ -38,7 +38,7 @@ jobs:
       # koda yazılıp yazılmadığını her push'ta otomatik tarıyorum
       # Tespit edilirse pipeline durur, kod main'e geçemez
       - name: Secret Detection — Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           # GITHUB_TOKEN pipeline'ın kendi token'ı, Gitleaks bunu GitHub API'ye bağlanmak için kullanıyor
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
