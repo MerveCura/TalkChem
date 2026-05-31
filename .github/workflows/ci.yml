@@ -15,7 +15,7 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # fetch-depth: 0 ekledim çünkü Gitleaks tüm commit geçmişini tarar
           # Varsayılan olarak sadece son commit gelir, bu yüzden tam geçmiş gerekiyor
