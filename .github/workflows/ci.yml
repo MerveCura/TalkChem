@@ -16,6 +16,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 ekledim çünkü Gitleaks tüm commit geçmişini tarar
+          # Varsayılan olarak sadece son commit gelir, bu yüzden tam geçmiş gerekiyor
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,6 +31,52 @@ jobs:
 
       - name: Lint with Ruff
         run: ruff check app/
+
+      # ── DevSecOps ────────────────────────────────────────────────────────────
+
+      # API key, token veya şifre gibi hassas verilerin yanlışlıkla
+      # koda yazılıp yazılmadığını her push'ta otomatik tarıyorum
+      # Tespit edilirse pipeline durur, kod main'e geçemez
+      - name: Secret Detection — Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          # GITHUB_TOKEN pipeline'ın kendi token'ı, Gitleaks bunu GitHub API'ye bağlanmak için kullanıyor
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Projede kullandığım kütüphanelerin bilinen güvenlik açığı
+      # (CVE) içerip içermediğini her push'ta kontrol ediyorum
+      # || true: pip-audit açık bulsa bile pipeline devam etsin, raporu görmek istiyorum
+      # Son satır || true olmadan çalışıyor, açık varsa pipeline fail ediyor
+      - name: Dependency Vulnerability Scan — pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt --output json -o pip-audit-report.json || true
+          pip-audit -r requirements.txt
+
+      # Bandit, Python kodumu statik analiz ederek güvenlik açıklarını buluyor
+      # -r app/: app klasörünü recursive olarak tara
+      # -ll: sadece orta ve yüksek severity açıkları raporla, düşükleri görmezden gel
+      # || true ile önce JSON raporu üretiyorum, sonra pipeline'ı fail etmek için tekrar çalıştırıyorum
+      - name: SAST — Bandit
+        run: |
+          pip install bandit
+          bandit -r app/ -ll --format json -o bandit-report.json || true
+          bandit -r app/ -ll
+
+      # Bandit ve pip-audit raporlarını GitHub Actions'ta artifact olarak saklıyorum
+      # if: always() → test fail etse bile raporlar yüklensin, neyin fail ettiğini görmek istiyorum
+      # retention-days: 30 → raporlar 30 gün sonra otomatik siliniyor
+      - name: Upload Security Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            backend/pip-audit-report.json
+            backend/bandit-report.json
+          retention-days: 30
+
+      # ── Tests ────────────────────────────────────────────────────────────────
 
       - name: Run tests
         env:

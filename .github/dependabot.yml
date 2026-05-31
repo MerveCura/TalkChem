@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Projede kullandığım Python kütüphanelerini haftalık takip ediyorum
+  # Yeni sürüm çıkınca veya güvenlik açığı yamalanınca Dependabot otomatik PR açıyor
+  # Ben sadece inceleyip merge ediyorum, böylece eski ve açıklı kütüphane kullanma riskini azaltıyorum
+  - package-ecosystem: "pip"
+    # backend klasöründeki requirements.txt'i izliyor
+    directory: "/backend"
+    schedule:
+      # Her pazartesi kontrol ediyor, haftalık güncelleme projemiz için yeterli
+      interval: "weekly"
+      day: "monday"
+    labels:
+      # Açılan PR'lara bu etiketler ekleniyor, kolayca filtreleyebiliyorum
+      - "dependencies"
+      - "security"
+
+  # CI/CD pipeline'ımda kullandığım GitHub Actions'ları da takip ediyorum
+  # actions/checkout, actions/setup-python gibi action'ların eski kalması
+  # güvenlik açığı oluşturabilir, bu yüzden onları da güncelleme takibine aldım
+  - package-ecosystem: "github-actions"
+    # Workflow dosyaları .github/workflows altında olduğu için root dizini veriyorum
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
