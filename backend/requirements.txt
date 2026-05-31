@@ -12,3 +12,4 @@ ruff==0.4.4
 openai>=1.0.0
 starlette==0.46.2
 pydantic[email]
+python-multipart==0.0.9
