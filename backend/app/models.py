@@ -26,6 +26,7 @@ class User(Base):
     challenged_duels = relationship("Duel", foreign_keys="Duel.challenger_id", back_populates="challenger")
     received_duels = relationship("Duel", foreign_keys="Duel.opponent_id", back_populates="opponent")
     speaking_sessions = relationship("SpeakingSession", back_populates="user")
+    shadowing_sessions = relationship("ShadowingSession", back_populates="user")
 
 class LevelTestAttempt(Base):
     __tablename__ = "level_test_attempts"
@@ -290,3 +291,24 @@ class GrammarQuizAnswer(Base):
     ai_feedback = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     attempt = relationship("GrammarQuizAttempt", back_populates="answers")
+
+# ── Shadowing Models ──────────────────────────────────────────────────────────
+
+class ShadowingSession(Base):
+    __tablename__ = "shadowing_sessions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    # Kullanıcının İngilizce seviyesi — seviyeye göre cümleler seçilir
+    level = Column(String, nullable=False)
+    # Kategori: daily, business, news, academic
+    category = Column(String, nullable=False)
+    # Kaç cümle tekrar edildi
+    total_sentences = Column(Integer, default=0)
+    # Kaç cümle doğru tekrar edildi (kelime doğruluğu %80 üstü)
+    correct_sentences = Column(Integer, default=0)
+    # Genel doğruluk skoru (0-100)
+    accuracy_score = Column(Float, nullable=True)
+    # Her cümlenin detayları JSON olarak saklanır
+    sentences = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    user = relationship("User", back_populates="shadowing_sessions")
