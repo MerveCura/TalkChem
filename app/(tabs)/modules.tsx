@@ -37,7 +37,7 @@ export default function SocialScreen() {
   const [pendingDuels, setPendingDuels] = useState<any[]>([]);
   const [activeDuels, setActiveDuels] = useState<any[]>([]);
   const [duelHistory, setDuelHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const [searching, setSearching] = useState(false);
   const [showTopicPicker, setShowTopicPicker] = useState<number | null>(null);
 
@@ -48,7 +48,7 @@ export default function SocialScreen() {
   );
 
   const fetchAll = async () => {
-    setLoading(true);
+    // İlk yüklemede spinner göster, sonrasında arka planda sessizce güncelle
     try {
       const token = await AsyncStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -74,7 +74,7 @@ export default function SocialScreen() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      setInitialized(true);
     }
   };
 
@@ -175,7 +175,8 @@ export default function SocialScreen() {
   const sentDuels = duelHistory.filter((d: any) => ["generating", "pending"].includes(d.status) && d.is_challenger);
   const completedDuels = duelHistory.filter((d: any) => d.status === "completed");
 
-  if (loading) {
+  // İlk yüklemede spinner — sadece bir kez
+  if (!initialized) {
     return (
       <LinearGradient colors={["#f953c6", "#7c3aed", "#60a5fa"]} style={styles.centered}>
         <ActivityIndicator size="large" color="white" />
@@ -188,7 +189,6 @@ export default function SocialScreen() {
       <View style={styles.blobTop} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Social</Text>
           {notifCount > 0 && (
@@ -198,7 +198,6 @@ export default function SocialScreen() {
           )}
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabRow}>
           {TABS.map(tab => {
             const badge = tab === "Friends" ? friendRequests.length
@@ -221,10 +220,8 @@ export default function SocialScreen() {
           })}
         </View>
 
-        {/* ── FRIENDS TAB ── */}
         {activeTab === "Friends" && (
           <>
-            {/* Arama */}
             <View style={styles.searchBox}>
               <TextInput
                 style={styles.searchInput}
@@ -236,7 +233,6 @@ export default function SocialScreen() {
               {searching && <ActivityIndicator size="small" color="white" style={{ marginLeft: 8 }} />}
             </View>
 
-            {/* Arama sonuçları */}
             {searchResults.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Search Results</Text>
@@ -267,7 +263,6 @@ export default function SocialScreen() {
               </View>
             )}
 
-            {/* Gelen istekler */}
             {friendRequests.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Friend Requests ({friendRequests.length})</Text>
@@ -278,16 +273,10 @@ export default function SocialScreen() {
                       <Text style={styles.username}>@{req.username}</Text>
                       {req.english_level && <Text style={styles.userLevel}>{req.english_level}</Text>}
                     </View>
-                    <TouchableOpacity
-                      style={styles.actionBtn}
-                      onPress={() => handleFriendRequest(req.friendship_id, "accept")}
-                    >
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => handleFriendRequest(req.friendship_id, "accept")}>
                       <Text style={styles.actionBtnText}>✓</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, styles.rejectBtn]}
-                      onPress={() => handleFriendRequest(req.friendship_id, "reject")}
-                    >
+                    <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => handleFriendRequest(req.friendship_id, "reject")}>
                       <Text style={styles.actionBtnText}>✕</Text>
                     </TouchableOpacity>
                   </View>
@@ -295,7 +284,6 @@ export default function SocialScreen() {
               </View>
             )}
 
-            {/* Arkadaş listesi */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Friends ({friends.length})</Text>
               {friends.length === 0 ? (
@@ -319,7 +307,6 @@ export default function SocialScreen() {
                         <Text style={styles.duelBtnText}>⚔️ Duel</Text>
                       </TouchableOpacity>
                     </View>
-
                     {showTopicPicker === f.id && (
                       <View style={styles.topicPicker}>
                         <Text style={styles.topicPickerTitle}>Choose a topic for the duel:</Text>
@@ -341,10 +328,8 @@ export default function SocialScreen() {
           </>
         )}
 
-        {/* ── DUELS TAB ── */}
         {activeTab === "Duels" && (
           <>
-            {/* Gelen duel istekleri */}
             {pendingDuels.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>⚔️ Incoming Challenges ({pendingDuels.length})</Text>
@@ -358,16 +343,10 @@ export default function SocialScreen() {
                       </View>
                     </View>
                     <View style={styles.duelActions}>
-                      <TouchableOpacity
-                        style={styles.acceptDuelBtn}
-                        onPress={() => handleDuelResponse(d.id, "accept")}
-                      >
+                      <TouchableOpacity style={styles.acceptDuelBtn} onPress={() => handleDuelResponse(d.id, "accept")}>
                         <Text style={styles.acceptDuelText}>Accept ⚔️</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.rejectDuelBtn}
-                        onPress={() => handleDuelResponse(d.id, "reject")}
-                      >
+                      <TouchableOpacity style={styles.rejectDuelBtn} onPress={() => handleDuelResponse(d.id, "reject")}>
                         <Text style={styles.rejectDuelText}>Decline</Text>
                       </TouchableOpacity>
                     </View>
@@ -376,7 +355,6 @@ export default function SocialScreen() {
               </View>
             )}
 
-            {/* Gönderilen / hazırlanıyor dueller */}
             {sentDuels.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>📤 Sent Challenges</Text>
@@ -399,7 +377,6 @@ export default function SocialScreen() {
               </View>
             )}
 
-            {/* Aktif dueller */}
             {activeDuels.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>🔥 Active Duels</Text>
@@ -415,9 +392,7 @@ export default function SocialScreen() {
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.duelOpponent}>@{d.opponent.username}</Text>
                         <Text style={styles.duelTopic}>{d.topic_name}</Text>
-                        {d.your_turn && (
-                          <Text style={styles.yourTurnText}>Your turn!</Text>
-                        )}
+                        {d.your_turn && <Text style={styles.yourTurnText}>Your turn!</Text>}
                       </View>
                       {d.already_played ? (
                         <View style={styles.waitingTag}>
@@ -434,7 +409,6 @@ export default function SocialScreen() {
               </View>
             )}
 
-            {/* Duel geçmişi */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>📊 Duel History</Text>
               {completedDuels.length === 0 ? (

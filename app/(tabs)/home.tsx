@@ -10,7 +10,6 @@ export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [homeworks, setHomeworks] = useState<any[]>([]);
-  const [hwLoading, setHwLoading] = useState(true);
 
   useEffect(() => {
     fetchUser();
@@ -38,7 +37,7 @@ export default function HomeScreen() {
   };
 
   const fetchHomeworks = async () => {
-    setHwLoading(true);
+    // setLoading YOK — arka planda sessizce güncellenir, spinner gösterilmez
     try {
       const token = await AsyncStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/homework/list`, {
@@ -49,8 +48,6 @@ export default function HomeScreen() {
       setHomeworks(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
-    } finally {
-      setHwLoading(false);
     }
   };
 
@@ -116,9 +113,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {hwLoading ? (
-            <ActivityIndicator color="white" style={{ marginVertical: 16 }} />
-          ) : homeworks.length === 0 ? (
+          {homeworks.length === 0 ? (
             <View style={styles.emptyHomework}>
               <Text style={styles.emptyHomeworkEmoji}>🎉</Text>
               <Text style={styles.emptyHomeworkText}>No homeworks yet!</Text>
