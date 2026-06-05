@@ -138,13 +138,14 @@ export default function GrammarQuizScreen() {
     if (nextIndex >= TOTAL_QUESTIONS) {
       try {
         const token = await AsyncStorage.getItem("token");
-        const finalCorrect = result?.is_correct ? correctCount + 1 : correctCount;
+        // correctCount zaten handleSubmitAnswer'da güncellendi
+        // tekrar eklemiyoruz — önceki hatada finalCorrect ile iki kez sayılıyordu
         const res = await fetch(`${API_URL}/api/grammar-quiz/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             attempt_id: attemptId,
-            correct_count: finalCorrect,
+            correct_count: correctCount,
             total: TOTAL_QUESTIONS,
             topic_id: topicId,
           }),

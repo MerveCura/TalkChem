@@ -40,6 +40,24 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleLogout = async () => {
+    Alert.alert(
+      "Çıkış Yap",
+      "Çıkış yapmak istediğinize emin misiniz?",
+      [
+        { text: "İptal", style: "cancel" },
+        {
+          text: "Çıkış Yap",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.removeItem("token");
+            router.replace("/(auth)/login");
+          },
+        },
+      ]
+    );
+  };
+
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -184,7 +202,6 @@ export default function ProfileScreen() {
             <Text style={styles.cardTitle}>🎯 Quiz History ({quizStats?.total_quizzes || 0})</Text>
             <Text style={styles.chevron}>{showQuizHistory ? "▲" : "▼"}</Text>
           </TouchableOpacity>
-
           {showQuizHistory && (
             <View>
               {quizStats?.total_quizzes === 0 ? (
@@ -205,8 +222,6 @@ export default function ProfileScreen() {
                       <Text style={styles.scoreLabel}>Total</Text>
                     </View>
                   </View>
-
-                  {/* Topic progress bars */}
                   {Object.entries(quizStats?.tense_stats || {}).map(([key, stats]: any) => (
                     <View key={key} style={styles.tenseProgressItem}>
                       <View style={styles.tenseProgressHeader}>
@@ -219,8 +234,6 @@ export default function ProfileScreen() {
                       <Text style={styles.tenseAttempts}>{stats.attempt_count} attempts</Text>
                     </View>
                   ))}
-
-                  {/* Quiz history listesi */}
                   {quizStats?.history?.map((quiz: any) => (
                     <View key={`${quiz.quiz_type}-${quiz.id}`} style={styles.quizHistoryItem}>
                       <TouchableOpacity
@@ -248,7 +261,6 @@ export default function ProfileScreen() {
                           {quiz.perfect && <Text style={styles.perfectBadge}>🏆</Text>}
                         </View>
                       </TouchableOpacity>
-
                       {expandedQuiz === quiz.id && quiz.wrong_answers.length > 0 && (
                         <View style={styles.wrongAnswersList}>
                           <Text style={styles.wrongAnswersTitle}>❌ Wrong Answers:</Text>
@@ -336,6 +348,11 @@ export default function ProfileScreen() {
             )}
           </View>
         )}
+
+        {/* Çıkış Yap */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutBtnText}>Çıkış Yap</Text>
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );
@@ -730,5 +747,19 @@ const styles = StyleSheet.create({
   retakeDisabledText: {
     color: "rgba(255,255,255,0.6)",
     fontSize: 13,
+  },
+  logoutBtn: {
+    backgroundColor: "rgba(248,113,113,0.25)",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.4)",
+  },
+  logoutBtnText: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

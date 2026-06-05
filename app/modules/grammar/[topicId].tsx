@@ -10,7 +10,7 @@ import { API_URL } from "../../config";
 
 const { width } = Dimensions.get("window");
 
-// ── Statik phrasal verb soruları (ilk 5 — anında gelir) ──────────────────────
+const MAX_QUESTIONS = 20;
 
 const STATIC_PV_QUESTIONS = [
   {
@@ -54,8 +54,6 @@ const STATIC_PV_QUESTIONS = [
     example: "I found out she had already left.",
   },
 ];
-
-// ── Konu verileri ─────────────────────────────────────────────────────────────
 
 const topicDetails: Record<string, any> = {
   "articles": {
@@ -158,8 +156,6 @@ const topicDetails: Record<string, any> = {
   },
 };
 
-// ── Mini Quiz ─────────────────────────────────────────────────────────────────
-
 function MiniQuiz({ section, color }: { section: any; color: [string, string] }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -174,21 +170,10 @@ function MiniQuiz({ section, color }: { section: any; color: [string, string] })
           let bg = "rgba(255,255,255,0.1)";
           let border = "rgba(255,255,255,0.2)";
           let textColor = "rgba(255,255,255,0.85)";
-          if (answered && opt === section.answer) {
-            bg = "rgba(52,211,153,0.25)";
-            border = "#34d399";
-            textColor = "#34d399";
-          } else if (answered && opt === selected && !isCorrect) {
-            bg = "rgba(248,113,113,0.25)";
-            border = "#f87171";
-            textColor = "#f87171";
-          }
+          if (answered && opt === section.answer) { bg = "rgba(52,211,153,0.25)"; border = "#34d399"; textColor = "#34d399"; }
+          else if (answered && opt === selected && !isCorrect) { bg = "rgba(248,113,113,0.25)"; border = "#f87171"; textColor = "#f87171"; }
           return (
-            <TouchableOpacity
-              key={i}
-              style={[quizStyles.optionBtn, { backgroundColor: bg, borderColor: border }]}
-              onPress={() => { if (!answered) { setSelected(opt); setAnswered(true); } }}
-            >
+            <TouchableOpacity key={i} style={[quizStyles.optionBtn, { backgroundColor: bg, borderColor: border }]} onPress={() => { if (!answered) { setSelected(opt); setAnswered(true); } }}>
               <Text style={[quizStyles.optionText, { color: textColor }]}>{opt}</Text>
             </TouchableOpacity>
           );
@@ -205,69 +190,21 @@ function MiniQuiz({ section, color }: { section: any; color: [string, string] })
 }
 
 const quizStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-  },
-  badge: {
-    color: "#fbbf24",
-    fontWeight: "800",
-    fontSize: 12,
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  question: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-    lineHeight: 24,
-    marginBottom: 14,
-  },
-  options: {
-    gap: 8,
-  },
-  optionBtn: {
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  feedback: {
-    marginTop: 12,
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    gap: 8,
-  },
-  feedbackCorrect: {
-    backgroundColor: "rgba(52,211,153,0.15)",
-  },
-  feedbackWrong: {
-    backgroundColor: "rgba(251,191,36,0.15)",
-  },
-  feedbackIcon: {
-    fontSize: 16,
-  },
-  feedbackText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 13,
-    lineHeight: 20,
-    flex: 1,
-  },
+  container: { backgroundColor: "rgba(0,0,0,0.2)", borderRadius: 20, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
+  badge: { color: "#fbbf24", fontWeight: "800", fontSize: 12, letterSpacing: 1, marginBottom: 10 },
+  question: { color: "white", fontSize: 16, fontWeight: "700", lineHeight: 24, marginBottom: 14 },
+  options: { gap: 8 },
+  optionBtn: { borderRadius: 12, padding: 12, borderWidth: 1 },
+  optionText: { fontSize: 14, fontWeight: "600" },
+  feedback: { marginTop: 12, borderRadius: 12, padding: 12, flexDirection: "row", gap: 8 },
+  feedbackCorrect: { backgroundColor: "rgba(52,211,153,0.15)" },
+  feedbackWrong: { backgroundColor: "rgba(251,191,36,0.15)" },
+  feedbackIcon: { fontSize: 16 },
+  feedbackText: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20, flex: 1 },
 });
-
-// ── Rule Card ─────────────────────────────────────────────────────────────────
 
 function RuleCard({ section }: { section: any }) {
   const ruleLines: string[] = Array.isArray(section.rule) ? section.rule : [section.rule];
-
   return (
     <View style={ruleStyles.container}>
       <View style={ruleStyles.header}>
@@ -278,9 +215,7 @@ function RuleCard({ section }: { section: any }) {
         </View>
       </View>
       <View style={ruleStyles.ruleBox}>
-        {ruleLines.map((line, i) => (
-          <Text key={i} style={[ruleStyles.ruleText, i > 0 && { marginTop: 6 }]}>{line}</Text>
-        ))}
+        {ruleLines.map((line, i) => <Text key={i} style={[ruleStyles.ruleText, i > 0 && { marginTop: 6 }]}>{line}</Text>)}
       </View>
       {section.tip && <Text style={ruleStyles.tip}>{section.tip}</Text>}
       <View style={ruleStyles.examples}>
@@ -289,17 +224,9 @@ function RuleCard({ section }: { section: any }) {
             return (
               <View key={i} style={ruleStyles.exampleBlock}>
                 {section.tenseTable ? (
-                  <View>
-                    <Text style={ruleStyles.exampleLabel}>{ex.sentence}</Text>
-                    <Text style={ruleStyles.exampleMain}>{ex.answer}</Text>
-                    <Text style={ruleStyles.exampleNote}>→ {ex.note}</Text>
-                  </View>
+                  <View><Text style={ruleStyles.exampleLabel}>{ex.sentence}</Text><Text style={ruleStyles.exampleMain}>{ex.answer}</Text><Text style={ruleStyles.exampleNote}>→ {ex.note}</Text></View>
                 ) : (
-                  <View>
-                    <Text style={ruleStyles.exampleActive}>{ex.sentence}</Text>
-                    <Text style={ruleStyles.examplePassive}>{ex.answer}</Text>
-                    <Text style={ruleStyles.exampleNote}>→ {ex.note}</Text>
-                  </View>
+                  <View><Text style={ruleStyles.exampleActive}>{ex.sentence}</Text><Text style={ruleStyles.examplePassive}>{ex.answer}</Text><Text style={ruleStyles.exampleNote}>→ {ex.note}</Text></View>
                 )}
               </View>
             );
@@ -320,9 +247,7 @@ function RuleCard({ section }: { section: any }) {
                 <Text style={ruleStyles.exampleSentence}>{ex.sentence}</Text>
                 {ex.note && <Text style={ruleStyles.exampleNote}>→ {ex.note}</Text>}
               </View>
-              <View style={ruleStyles.answerBadge}>
-                <Text style={ruleStyles.answerText}>{ex.answer}</Text>
-              </View>
+              <View style={ruleStyles.answerBadge}><Text style={ruleStyles.answerText}>{ex.answer}</Text></View>
             </View>
           );
         })}
@@ -332,126 +257,27 @@ function RuleCard({ section }: { section: any }) {
 }
 
 const ruleStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 14,
-  },
-  icon: {
-    fontSize: 28,
-  },
-  title: {
-    color: "white",
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: "600",
-  },
-  ruleBox: {
-    backgroundColor: "rgba(0,0,0,0.2)",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: "rgba(255,255,255,0.5)",
-  },
-  ruleText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 22,
-  },
-  tip: {
-    color: "#fbbf24",
-    fontSize: 13,
-    marginBottom: 14,
-    lineHeight: 20,
-  },
-  examples: {
-    gap: 10,
-  },
-  exampleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 10,
-    padding: 10,
-  },
-  exampleLeft: {
-    flex: 1,
-  },
-  exampleSentence: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  exampleBlock: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 10,
-    padding: 10,
-  },
-  exampleLabel: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 2,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  exampleActive: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
-    fontStyle: "italic",
-    marginBottom: 4,
-  },
-  exampleMain: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 20,
-    marginBottom: 2,
-  },
-  examplePassive: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "700",
-    lineHeight: 20,
-    marginBottom: 2,
-  },
-  exampleNote: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
-    marginTop: 2,
-    fontStyle: "italic",
-  },
-  answerBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  answerText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "800",
-  },
+  container: { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 20, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
+  header: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 14 },
+  icon: { fontSize: 28 },
+  title: { color: "white", fontSize: 17, fontWeight: "900" },
+  subtitle: { color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 2, fontWeight: "600" },
+  ruleBox: { backgroundColor: "rgba(0,0,0,0.2)", borderRadius: 10, padding: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: "rgba(255,255,255,0.5)" },
+  ruleText: { color: "white", fontSize: 14, fontWeight: "700", lineHeight: 22 },
+  tip: { color: "#fbbf24", fontSize: 13, marginBottom: 14, lineHeight: 20 },
+  examples: { gap: 10 },
+  exampleRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 10, padding: 10 },
+  exampleLeft: { flex: 1 },
+  exampleSentence: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20 },
+  exampleBlock: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 10, padding: 10 },
+  exampleLabel: { color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 },
+  exampleActive: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontStyle: "italic", marginBottom: 4 },
+  exampleMain: { color: "white", fontSize: 13, fontWeight: "700", lineHeight: 20, marginBottom: 2 },
+  examplePassive: { color: "white", fontSize: 13, fontWeight: "700", lineHeight: 20, marginBottom: 2 },
+  exampleNote: { color: "rgba(255,255,255,0.5)", fontSize: 11, marginTop: 2, fontStyle: "italic" },
+  answerBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  answerText: { color: "white", fontSize: 12, fontWeight: "800" },
 });
-
-// ── Phrasal Verb Practice Card ────────────────────────────────────────────────
 
 function PVCard({ q, index, onNext }: { q: any; index: number; onNext: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -468,53 +294,26 @@ function PVCard({ q, index, onNext }: { q: any; index: number; onNext: () => voi
           </View>
         )}
       </View>
-
       <Text style={pvStyles.sentence}>{q.sentence}</Text>
-
       <View style={pvStyles.options}>
         {q.options.map((opt: string, i: number) => {
           let bg = "rgba(255,255,255,0.08)";
           let border = "rgba(255,255,255,0.15)";
           let textColor = "rgba(255,255,255,0.85)";
           let icon = "";
-
-          if (!checked && selected === opt) {
-            bg = "rgba(255,255,255,0.2)";
-            border = "white";
-            textColor = "white";
-          }
-          if (checked && opt === q.answer) {
-            bg = "rgba(52,211,153,0.2)";
-            border = "#34d399";
-            textColor = "#34d399";
-            icon = "✓";
-          } else if (checked && opt === selected && !isCorrect) {
-            bg = "rgba(248,113,113,0.2)";
-            border = "#f87171";
-            textColor = "#f87171";
-            icon = "✗";
-          }
-
+          if (!checked && selected === opt) { bg = "rgba(255,255,255,0.2)"; border = "white"; textColor = "white"; }
+          if (checked && opt === q.answer) { bg = "rgba(52,211,153,0.2)"; border = "#34d399"; textColor = "#34d399"; icon = "✓"; }
+          else if (checked && opt === selected && !isCorrect) { bg = "rgba(248,113,113,0.2)"; border = "#f87171"; textColor = "#f87171"; icon = "✗"; }
           return (
-            <TouchableOpacity
-              key={i}
-              style={[pvStyles.optionBtn, { backgroundColor: bg, borderColor: border }]}
-              onPress={() => { if (!checked) setSelected(opt); }}
-              activeOpacity={checked ? 1 : 0.7}
-            >
+            <TouchableOpacity key={i} style={[pvStyles.optionBtn, { backgroundColor: bg, borderColor: border }]} onPress={() => { if (!checked) setSelected(opt); }} activeOpacity={checked ? 1 : 0.7}>
               <Text style={[pvStyles.optionText, { color: textColor }]}>{opt}</Text>
               {icon !== "" && <Text style={[pvStyles.checkIcon, { color: textColor }]}>{icon}</Text>}
             </TouchableOpacity>
           );
         })}
       </View>
-
       {!checked ? (
-        <TouchableOpacity
-          style={[pvStyles.checkBtn, !selected && pvStyles.checkBtnDisabled]}
-          onPress={() => { if (selected) setChecked(true); }}
-          disabled={!selected}
-        >
+        <TouchableOpacity style={[pvStyles.checkBtn, !selected && pvStyles.checkBtnDisabled]} onPress={() => { if (selected) setChecked(true); }} disabled={!selected}>
           <Text style={pvStyles.checkBtnText}>Check</Text>
         </TouchableOpacity>
       ) : (
@@ -534,169 +333,98 @@ function PVCard({ q, index, onNext }: { q: any; index: number; onNext: () => voi
 }
 
 const pvStyles = StyleSheet.create({
-  card: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.18)",
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 14,
-  },
-  cardNum: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  verbBadge: {
-    backgroundColor: "rgba(232,121,249,0.3)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: "rgba(232,121,249,0.5)",
-  },
-  verbBadgeText: {
-    color: "#f0abfc",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  sentence: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  options: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  optionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    flex: 1,
-  },
-  checkIcon: {
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  checkBtn: {
-    backgroundColor: "white",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  checkBtnDisabled: {
-    opacity: 0.35,
-  },
-  checkBtnText: {
-    color: "#a21caf",
-    fontWeight: "900",
-    fontSize: 15,
-  },
-  feedbackBox: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-  },
-  feedbackCorrect: {
-    backgroundColor: "rgba(52,211,153,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(52,211,153,0.3)",
-  },
-  feedbackWrong: {
-    backgroundColor: "rgba(251,191,36,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.3)",
-  },
-  feedbackTitle: {
-    color: "white",
-    fontWeight: "900",
-    fontSize: 15,
-    marginBottom: 6,
-  },
-  feedbackMeaning: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  feedbackExample: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 12,
-    fontStyle: "italic",
-  },
-  nextBtn: {
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  nextBtnText: {
-    color: "white",
-    fontWeight: "800",
-    fontSize: 15,
-  },
+  card: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)" },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  cardNum: { color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: "700" },
+  verbBadge: { backgroundColor: "rgba(232,121,249,0.3)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "rgba(232,121,249,0.5)" },
+  verbBadgeText: { color: "#f0abfc", fontSize: 13, fontWeight: "800" },
+  sentence: { color: "white", fontSize: 16, fontWeight: "700", lineHeight: 24, marginBottom: 16 },
+  options: { gap: 10, marginBottom: 16 },
+  optionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 12, padding: 14, borderWidth: 1 },
+  optionText: { fontSize: 14, fontWeight: "600", flex: 1 },
+  checkIcon: { fontSize: 16, fontWeight: "900" },
+  checkBtn: { backgroundColor: "white", borderRadius: 14, paddingVertical: 14, alignItems: "center" },
+  checkBtnDisabled: { opacity: 0.35 },
+  checkBtnText: { color: "#a21caf", fontWeight: "900", fontSize: 15 },
+  feedbackBox: { borderRadius: 14, padding: 14, marginBottom: 12 },
+  feedbackCorrect: { backgroundColor: "rgba(52,211,153,0.15)", borderWidth: 1, borderColor: "rgba(52,211,153,0.3)" },
+  feedbackWrong: { backgroundColor: "rgba(251,191,36,0.12)", borderWidth: 1, borderColor: "rgba(251,191,36,0.3)" },
+  feedbackTitle: { color: "white", fontWeight: "900", fontSize: 15, marginBottom: 6 },
+  feedbackMeaning: { color: "rgba(255,255,255,0.9)", fontSize: 13, fontWeight: "700", marginBottom: 4 },
+  feedbackExample: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontStyle: "italic" },
+  nextBtn: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 14, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
+  nextBtnText: { color: "white", fontWeight: "800", fontSize: 15 },
 });
-
-// ── Phrasal Verb Practice Section ─────────────────────────────────────────────
 
 function PhrasalVerbPractice() {
   const [questions, setQuestions] = useState<any[]>([...STATIC_PV_QUESTIONS]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [finished, setFinished] = useState(false);
   const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (currentIndex >= questions.length - 3 && !fetchingRef.current) {
+    // 20 soruya ulaşmadıysak ve 3 soru kaldıysa yeni yükle
+    if (
+      questions.length < MAX_QUESTIONS &&
+      currentIndex >= questions.length - 3 &&
+      !fetchingRef.current
+    ) {
       fetchMore();
     }
-  }, [currentIndex]);
+    // 20 soruya ulaştık ve son sorudayız
+    if (currentIndex >= MAX_QUESTIONS) {
+      setFinished(true);
+    }
+  }, [currentIndex, questions.length]);
 
   const fetchMore = async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
-    setLoading(true);
+    setLoadingMore(true);
     try {
       const shownVerbs = questions.map((q: any) => q.verb).join(", ");
       const token = await AsyncStorage.getItem("token");
       const res = await fetch(
         `${API_URL}/api/grammar-quiz/phrasal-verbs/practice?shown_verbs=${encodeURIComponent(shownVerbs)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
+        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
       );
       const data = await res.json();
       const newQs = data.questions;
       if (Array.isArray(newQs) && newQs.length > 0) {
-        setQuestions(prev => [...prev, ...newQs]);
+        setQuestions(prev => {
+          const combined = [...prev, ...newQs];
+          // max 20 ile sınırla
+          return combined.slice(0, MAX_QUESTIONS);
+        });
       }
     } catch (e) {
       console.error("PV fetch error:", e);
     } finally {
       fetchingRef.current = false;
-      setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+  const handleRestart = () => {
+    setQuestions([...STATIC_PV_QUESTIONS]);
+    setCurrentIndex(0);
+    setFinished(false);
+    fetchingRef.current = false;
+  };
+
+  if (finished) {
+    return (
+      <View style={practiceStyles.finishedContainer}>
+        <Text style={practiceStyles.finishedEmoji}>🎉</Text>
+        <Text style={practiceStyles.finishedTitle}>Great work!</Text>
+        <Text style={practiceStyles.finishedSub}>You completed all 20 phrasal verb questions.</Text>
+        <TouchableOpacity style={practiceStyles.restartBtn} onPress={handleRestart}>
+          <Text style={practiceStyles.restartBtnText}>↩ Başa Dön</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const current = questions[currentIndex];
   if (!current) return null;
@@ -708,8 +436,11 @@ function PhrasalVerbPractice() {
         <Text style={practiceStyles.subtitle}>The most commonly used phrasal verbs in daily life</Text>
       </View>
       <View style={practiceStyles.progressRow}>
-        <Text style={practiceStyles.progressText}>#{currentIndex + 1}</Text>
-        {loading && <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />}
+        <Text style={practiceStyles.progressText}>
+          #{currentIndex + 1} / {MAX_QUESTIONS}
+        </Text>
+        {/* Loading sadece arka planda gösterilir, mevcut soruyu engellemez */}
+        {loadingMore && <ActivityIndicator size="small" color="rgba(255,255,255,0.4)" />}
       </View>
       <PVCard
         key={currentIndex}
@@ -749,9 +480,40 @@ const practiceStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  finishedContainer: {
+    alignItems: "center",
+    paddingVertical: 32,
+    gap: 12,
+  },
+  finishedEmoji: {
+    fontSize: 48,
+  },
+  finishedTitle: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  finishedSub: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  restartBtn: {
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  restartBtnText: {
+    color: "white",
+    fontWeight: "800",
+    fontSize: 16,
+  },
 });
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function GrammarTopicScreen() {
   const router = useRouter();
@@ -797,14 +559,8 @@ export default function GrammarTopicScreen() {
           onPress={() => router.push(`/modules/grammar/quiz/${topicId}` as any)}
           activeOpacity={0.85}
         >
-          <LinearGradient
-            colors={topic.color}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.quizBtnGradient}
-          >
-            <Text style={styles.quizBtnText}>Start Full Quiz 🚀</Text>
-            <Text style={styles.quizBtnSub}>15 questions • AI-powered</Text>
+          <LinearGradient colors={topic.color} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.quizBtnGradient}>
+            <Text style={styles.quizBtnText}>Start Quiz </Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
